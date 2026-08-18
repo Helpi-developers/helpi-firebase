@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-08-18
-**Last Updated**: 2026-08-18 (revalidación tras `/speckit-clarify`: 5 decisiones integradas)
+**Last Updated**: 2026-08-18 (2.ª revalidación tras `/speckit-clarify`: 5 contradicciones resueltas)
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -35,7 +35,7 @@
 Regla de redacción declarada en la especificación: cada requisito debe poder verificarse
 emitiendo una solicitud contra el entorno de emulación, sin dispositivo.
 
-- [x] Los 94 requisitos funcionales se expresan como permitido / denegado / aceptado /
+- [x] Los 109 requisitos funcionales se expresan como permitido / denegado / aceptado /
       rechazado / presente / ausente
 - [x] Ningún requisito funcional describe comportamiento interno ni presentación del cliente
 - [x] Los 8 requisitos no funcionales declaran su método de verificación
@@ -43,9 +43,8 @@ emitiendo una solicitud contra el entorno de emulación, sin dispositivo.
       tales (NFR-003, NFR-004, NFR-005, NFR-007: revisión de diseño)
 - [x] Los enunciados retirados por no ser verificables están listados con su motivo y su
       destino (sección "Enunciados excluidos deliberadamente", 7 entradas)
-- [ ] **El vencimiento de la ventana de gracia es comprobable sin esperar 30 días** — la
-      spec no dice cómo se adelanta el reloj en el entorno de emulación. Afecta a los
-      escenarios 6 a 10 y 16 de la Historia 7 y a SC-029 y SC-030.
+- [x] Todo vencimiento se expresa como instante absoluto, de modo que una prueba puede
+      sembrar el estado vencido sin esperar la ventana real (FR-106 a FR-109)
 
 ## Superficie comprometida
 
@@ -54,12 +53,12 @@ emitiendo una solicitud contra el entorno de emulación, sin dispositivo.
 - [x] Cada función incorporada tras la constitución inicial declara su justificación frente
       al Principio II (funciones 4 y 5, sección "Superficie comprometida")
 - [x] Ninguna capacidad adicional quedó incorporada sin decisión explícita
-- [x] Ninguna función se dispara por sondeo ni permanece en ejecución (FR-072 a FR-074)
+- [x] Ninguna función se dispara por sondeo ni permanece en ejecución (FR-074 a FR-076)
 - [x] La ejecución diferida del borrado es de disparo único y no un barrido periódico
-      (FR-057, escenario 12 de la Historia 7, SC-029)
+      (FR-058, escenario 12 de la Historia 7, SC-029)
 - [ ] **La función 5 concentra el mayor riesgo del repositorio y no tiene checklist de
       revisión propio** — escribe en abanico sobre perfiles ajenos eludiendo por diseño la
-      regla de separación. FR-064 a FR-071 acotan qué puede tocar, pero conviene un
+      regla de separación. FR-066 a FR-073 acotan qué puede tocar, pero conviene un
       `/speckit-checklist` dedicado antes de implementarla.
 
 ## Constitution Alignment
@@ -68,14 +67,14 @@ Verificación contra `.specify/memory/constitution.md` v1.0.0.
 
 - [x] Principio II — cada capacidad declara por qué no puede resolverse en el cliente
       (NFR-007, sección "Superficie comprometida")
-- [x] Principio III — disparo por evento, sin sondeo ni ejecución permanente (FR-072 a FR-074)
+- [x] Principio III — disparo por evento, sin sondeo ni ejecución permanente (FR-074 a FR-076)
 - [x] Principio IV — la prohibición se expresa como ausencia de ruta, verificable
       (FR-012, FR-031, FR-045, SC-007, SC-008, SC-015)
 - [x] Principio V — las cuatro clases de solicitante tienen resultado esperado en cada regla
       (FR-009, SC-002)
 - [x] Principio VI — caso permitido y caso denegado en toda regla (NFR-006, SC-001)
 - [x] Principio VII — la restricción de forma de entrega se expresa sin nombrar el mecanismo
-      (FR-043, FR-052, FR-094, SC-016)
+      (FR-043, FR-052, FR-096, SC-016)
 - [x] Principio VIII — publicación indivisible, sin sobrescritura, con validación de
       correspondencia (FR-032 a FR-041)
 - [x] Principio IX — dos zonas sin solapamiento ni hueco (FR-030, Historia 3 escenario 8)
@@ -85,7 +84,7 @@ Verificación contra `.specify/memory/constitution.md` v1.0.0.
       credenciales de administración y de cliente en un mismo test (Assumptions)
 - [x] Principio XIII — manejo de errores explícito (NFR-008, FR-049)
 - [x] Principio XVI — no se produjo código, solo documentos de especificación
-- [ ] **Principio IV frente a FR-091** — conservar el nombre visible de una cuenta eliminada
+- [ ] **Principio IV frente a FR-093** — conservar el nombre visible de una cuenta eliminada
       es un dato personal de alguien que ejerció su derecho de supresión. La tensión está
       declarada en Assumptions y es revisable; requiere confirmación de un revisor.
 
@@ -97,12 +96,12 @@ Tres enunciados son lo más cerca de un detalle de implementación que hay en el
 **Se mantienen deliberadamente** y el ítem queda sin tildar para que un revisor los confirme
 o los reformule:
 
-1. **FR-023 y FR-066 (índices de consulta).** Los índices son uno de los artefactos que este
+1. **FR-023 y FR-068 (índices de consulta).** Los índices son uno de los artefactos que este
    repositorio contiene, y su ausencia es un fallo observable —la consulta se rechaza—, no
    una decisión interna.
-2. **FR-054 y FR-057 (tarea diferida de disparo único).** Nombran un mecanismo, no solo un
+2. **FR-054 y FR-058 (tarea diferida de disparo único).** Nombran un mecanismo, no solo un
    resultado. Fue necesario para distinguir la ejecución diferida admitida del barrido
-   periódico que FR-072 prohíbe; sin esa distinción el requisito no sería verificable.
+   periódico que FR-074 prohíbe; sin esa distinción el requisito no sería verificable.
 
 ### Ambigüedades
 
@@ -115,7 +114,10 @@ decisiones están en `## Clarifications` y su aplicación en la tabla de resuelt
 | AMB-007 | Resuelta | Suma la función 5 (propagación de pictograma) |
 | AMB-003 | Resuelta | Reescribe la Historia 7 en dos tiempos y suma ejecución diferida |
 | AMB-002 | Resuelta | Acota la reversión a 3 versiones |
-| AMB-004 | Resuelta | Suma FR-089 a FR-094 y un aviso nuevo |
+| AMB-004 | Resuelta | Suma FR-091 a FR-096 y un aviso nuevo |
+
+La segunda sesión resolvió además las cinco contradicciones que detectó `checklists/validacion.md`.
+
 | AMB-005 | Abierta, no bloqueante | Umbral de costo de la evaluación de autorización |
 | AMB-006 | Abierta, no bloqueante | Expresión del consentimiento de un adulto responsable |
 
@@ -125,7 +127,7 @@ declarando que no tiene expresión en el servidor.
 
 ### El alcance creció
 
-La superficie pasó de tres funciones a cinco, y los requisitos funcionales de 65 a 94. El
+La superficie pasó de tres funciones a cinco, y los requisitos funcionales de 65 a 109. El
 crecimiento proviene de decisiones explícitas, no de deriva, pero conviene tenerlo presente
 al planificar: la constitución vigente (Principio II) describe la superficie comprometida
 como tres funciones y esa cifra quedó desactualizada.
