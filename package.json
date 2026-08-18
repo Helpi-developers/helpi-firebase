@@ -1,0 +1,26 @@
+{
+  "name": "helpi-firebase",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "verificar": "npm run verificar:tipos && firebase emulators:exec --only firestore,storage,auth,functions --project demo-helpi-local \"npm run verificar:emulador\"",
+    "verificar:emulador": "npm run test:reglas && npm run test:funciones && npm run test:publicacion",
+    "verificar:interno": "npm run verificar:tipos && npm run test:reglas && npm run test:funciones && npm run test:publicacion",
+    "verificar:tipos": "npm --prefix functions run build",
+    "test:reglas": "npm --prefix tests/reglas test",
+    "test:funciones": "npm --prefix functions test",
+    "test:publicacion": "vitest run scripts/publicar-modelo/test",
+    "lint": "npm --prefix functions run lint",
+    "publicar": "tsx scripts/publicar-modelo/index.ts"
+  },
+  "devDependencies": {
+    "firebase-tools": "^13.29.1",
+    "tsx": "^4.19.2",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.4.0"
+  }
+}

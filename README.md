@@ -39,3 +39,31 @@ La constitución completa está en [`.specify/memory/constitution.md`](.specify/
 Las especificaciones de funcionalidad viven en `helpi-android`. Antes de implementar cualquier cosa en este repositorio, la especificación correspondiente debe existir y estar cerrada.
 
 Todo despliegue a producción ocurre únicamente desde integración continua. No se despliega desde una máquina local.
+
+### Verificación local
+
+Requisitos: Node 22, Java y Firebase CLI. El repositorio no tiene un proyecto por defecto;
+la verificación usa exclusivamente el Emulator Suite.
+
+```bash
+npm install
+npm install --prefix functions
+npm install --prefix tests/reglas
+npm run verificar
+```
+
+Para levantar los emuladores de forma interactiva:
+
+```bash
+firebase emulators:start --only firestore,storage,auth,functions
+```
+
+La publicación de modelos requiere un manifiesto y artefactos producidos por `helpi-ml` y
+debe ejecutarse desde CI. En local sólo se permite explícitamente contra el emulador:
+
+```bash
+npm run publicar -- --version v2 --artefactos ./artefactos/v2 --emulador
+```
+
+La guía operativa y los escenarios de aceptación están en
+`specs/001-superficie-servidor/quickstart.md`.

@@ -1,0 +1,7 @@
+node_modules/
+functions/lib/
+coverage/
+package-lock.json
+functions/package-lock.json
+tests/reglas/package-lock.json
+

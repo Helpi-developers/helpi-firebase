@@ -1,0 +1,14 @@
+node_modules/
+functions/lib/
+coverage/
+*.log
+.env*
+.firebase/
+.firebaserc.local
+dist/
+build/
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+

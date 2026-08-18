@@ -1,0 +1,16 @@
+{
+  "name": "helpi-firebase-rules-tests",
+  "private": true,
+  "scripts": {
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "firebase": "^10.14.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

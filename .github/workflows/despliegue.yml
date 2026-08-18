@@ -1,0 +1,28 @@
+name: Despliegue
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npm install --prefix functions
+      - run: npm install --prefix tests/reglas
+      - run: npm run verificar
+      - uses: w9jds/firebase-action@v13.29.1
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        with:
+          args: deploy --only firestore,storage,functions --project ${{ vars.FIREBASE_PROJECT_ID }}
+
