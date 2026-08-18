@@ -34,7 +34,7 @@ Por qué es una colección separada y no un campo del perfil:
 [../data-model.md](../data-model.md) § 2.
 
 ```
-vence_en: timestamp        # instante absoluto — FR-107, FR-109
+vence_en: timestamp        # instante absoluto — FR-108, FR-110
 solicitada_en: timestamp
 ```
 
@@ -45,7 +45,7 @@ solicitada_en: timestamp
 - Lectura: solo el propietario (FR-097). Contenido: nada más que estos dos campos (FR-098).
 
 **Ninguna función calcula la duración al comprobar.** Se compara `vence_en` con la hora del
-servidor (FR-108), que es lo que permite a una prueba sembrar el estado vencido.
+servidor (FR-109), que es lo que permite a una prueba sembrar el estado vencido.
 
 ---
 
@@ -72,10 +72,12 @@ actividades: [ { pasos: [ { pictograma_id, etiqueta, ubicacion, ... } ] } ]
 ## `usuarios/{uid}/dispositivos/{id}`
 
 ```
-token: string        # destino de envío
+tipo: "USUARIO" | "TUTOR"    # el token del acompañante cuelga del perfil de la persona usuaria
+token_fcm: string            # destino de envío
+estado: "ACTIVO" | "INACTIVO"
 ```
 
-- **Función 1** lo lee de cada cuenta autorizada para construir los destinos (FR-042).
+- **Función 1** lo lee **del propio perfil**, filtrando por `tipo: "TUTOR"`, para construir los destinos (FR-042). No hay lectura cruzada de perfiles.
 - **Función 1 y función 3** lo **borran** cuando el proveedor reporta el destino como
   inválido durante una emisión (FR-046).
 
@@ -87,16 +89,17 @@ que FR-074 prohíbe.
 
 ## `usuarios/{uid}/resumenes/{fecha}`
 
-Único contenido admitido del ámbito de traducción (FR-100).
+Cumplimiento de rutinas del día (FR-100). **No es el ámbito de traducción**, que queda fuera de alcance.
 
 ```
-conteos:    { <nombre>: number }
-duraciones: { <nombre>: number }
+fecha: string                 # id del documento, YYYY-MM-DD
+rutinas: [ { id_rutina, nombre, pasos_completados, pasos_totales } ]
+fecha_actualizacion: timestamp
 ```
 
 **Ninguna función lo lee ni lo escribe.** Aparece acá solo para fijar que la **función 3** lo
 borra como parte del subárbol del perfil (FR-059), y que las reglas lo tratan distinto que
-al resto de las subcolecciones (FR-102, FR-103).
+igual que al resto de las subcolecciones: propietaria lee y escribe, cuenta autorizada lee (FR-102, FR-103).
 
 Ninguna glosa, texto ni transcripción: una escritura que los incluya se rechaza en la regla,
 no en una función (FR-101).
@@ -125,7 +128,7 @@ Salida:   { perfil_id: string }
 ```
 
 - Rechazo indistinguible entre código vencido, ya canjeado, manipulado o inexistente
-  (FR-081), y también cuando el rechazo es por límite de tasa (FR-105).
+  (FR-081), y también cuando el rechazo es por límite de tasa (FR-106).
 - Denegado sin autenticar (FR-082).
 - Límite: 5 intentos fallidos por hora, contados por cuenta solicitante **y** por perfil
   emisor, el que se alcance primero (FR-084).
@@ -149,7 +152,7 @@ Aplica a las cinco funciones. Principio XIII, FR-049.
   apropiado en las llamables.
 - **Sin datos personales identificables en los registros.** Identificadores opacos sí;
   nombres, contenido y ubicación no.
-- Los rechazos que la especificación exige indistinguibles (FR-081, FR-099, FR-105) devuelven
+- Los rechazos que la especificación exige indistinguibles (FR-081, FR-099, FR-106) devuelven
   **el mismo código y el mismo cuerpo**. La distinción puede quedar en el registro del
   servidor, nunca en la respuesta.
 - Observabilidad: Cloud Logging y Error Reporting. **Sin Sentry.**

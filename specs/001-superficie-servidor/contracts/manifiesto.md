@@ -35,7 +35,7 @@ descargó **antes** de reemplazar su modelo activo (FR-035).
 ```
 {
   version: <identificador de la versión>,
-  vocabulario_version: <versión de vocabulario que este modelo requiere>,
+  version_vocabulario: <versión de vocabulario que este modelo requiere>,
   publicado_en: <instante ISO-8601>,
   artefactos: {
     modelo:   { hash: <digest>, bytes: <entero> },
@@ -44,10 +44,10 @@ descargó **antes** de reemplazar su modelo activo (FR-035).
 }
 ```
 
-**`vocabulario_version` es el campo que impide la falla silenciosa.** Un índice de clase
+**`version_vocabulario` es el campo que impide la falla silenciosa.** Un índice de clase
 solo tiene sentido contra el catálogo de su misma versión; si se desincronizan, la
 aplicación traduce mal sin arrojar ningún error visible. El script valida que
-`vocabularios/{vocabulario_version}` exista y corresponda **antes** de anunciar la versión
+`vocabularios/{version_vocabulario}` exista y corresponda **antes** de anunciar la versión
 como vigente (FR-037).
 
 ---
@@ -56,11 +56,11 @@ como vigente (FR-037).
 
 ```
 modelos/{version}
-├── vocabulario_version: string
+├── version_vocabulario: string
 ├── publicado_en: timestamp
-├── version_minima_app: string      # FR-038
-├── rutas: { modelo, catalogo, manifiesto }   # rutas de Storage, nunca binarios
-└── hashes: { modelo, catalogo }
+├── min_version_app: string      # FR-038
+├── storage_path: string             # ruta del artefacto en Storage, nunca el binario
+└── hash: string                    # "sha256:..." del artefacto
 ```
 
 Su existencia **es** la disponibilidad de la versión. Mientras no exista, los artefactos
@@ -77,7 +77,7 @@ Solo lectura para todo cliente; escritura únicamente con credenciales de admini
 ```
 config/modelo_activo
 ├── version: string                 # apunta a modelos/{version}
-├── version_minima_app: string      # FR-038
+├── min_version_app: string      # FR-038
 └── actualizado_en: timestamp
 ```
 
@@ -96,7 +96,7 @@ El orden importa. Cada paso solo se ejecuta si el anterior terminó bien.
 
 | # | Paso | Si falla acá |
 |---|---|---|
-| 1 | Validar que `vocabularios/{vocabulario_version}` existe y corresponde (FR-036) | Nada se subió. Se aborta sin efectos |
+| 1 | Validar que `vocabularios/{version_vocabulario}` existe y corresponde (FR-036) | Nada se subió. Se aborta sin efectos |
 | 2 | Validar que la versión no fue publicada antes | Ídem. **Se rechaza reutilizar el número** (FR-034) |
 | 3 | Subir modelo, catálogo y manifiesto a las rutas de la versión | Quedan objetos huérfanos, inertes. El script los informa y quema el número de versión |
 | 4 | Verificar los hashes de lo subido contra el manifiesto | Ídem |

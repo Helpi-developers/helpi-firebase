@@ -44,8 +44,8 @@ Todos los valores de `data` son cadenas: el transporte no conserva tipos.
 
 ## 1 · Aviso de emergencia
 
-**Función**: `aviso-emergencia` · **Destino**: token por dispositivo de cada cuenta
-autorizada · **Requisitos**: FR-042 a FR-049
+**Función**: `aviso-emergencia` · **Destino**: `token_fcm` de cada dispositivo con
+`tipo: TUTOR` registrado **bajo el propio perfil** · **Requisitos**: FR-042 a FR-049
 
 ```
 data: {
@@ -93,8 +93,8 @@ sin error** (FR-053).
 
 ## 3 · Cierre de vínculo por eliminación de cuenta
 
-**Función**: `borrado-cascada` · **Destino**: token por dispositivo de los perfiles en cuya
-lista figuraba la cuenta que se elimina · **Requisitos**: FR-094 a FR-096
+**Función**: `borrado-cascada` · **Destino**: `token_fcm` de los dispositivos de los perfiles
+en cuya lista figuraba la cuenta que se elimina · **Requisitos**: FR-094 a FR-096
 
 ```
 data: {

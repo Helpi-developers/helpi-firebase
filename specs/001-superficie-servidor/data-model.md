@@ -40,7 +40,7 @@ dos reglas incompatibles.
 
 ```
 eliminaciones_pendientes/{uid}
-├── vence_en: timestamp        # instante absoluto — FR-107
+├── vence_en: timestamp        # instante absoluto — FR-108
 └── solicitada_en: timestamp
 ```
 
@@ -86,13 +86,14 @@ precisamente porque esa situación se detectó como defecto (CHK026).
 
 ### `usuarios/{uid}/resumenes/{fecha}`
 
-Es el **único contenido admitido del ámbito de traducción** (FR-100).
+Contiene el **cumplimiento de rutinas del día** (FR-100). **No es el ámbito de traducción**, que quedó fuera del alcance de esta funcionalidad.
 
 - Solo conteos y duraciones. **Ninguna glosa, texto ni transcripción**; una escritura que
   los incluya se rechaza (FR-101).
-- Lectura y escritura: **solo el propietario** (FR-102). Denegado a las cuentas autorizadas
-  (FR-103), a diferencia del resto de las subcolecciones. Ver D-008.
-- Como máximo un documento por perfil y por día (FR-104), que es lo que satisface NFR-005.
+- Escritura: solo el propietario (FR-102). **Lectura: también las cuentas autorizadas**
+  (FR-103), porque consultar el cumplimiento es la razón por la que el resumen existe.
+- El identificador del documento es la fecha, así que existe como máximo uno por perfil y
+  por día (FR-105), que es lo que satisface NFR-005.
 
 ### `vocabularios/{version}/senas/{id}`
 
@@ -154,11 +155,11 @@ instante de vencimiento adentro.
 Cada uno se traduce en al menos una prueba de reglas o de integración.
 
 1. Ninguna ruta acepta video, puntos clave, glosas ni credenciales (NFR-001, FR-031).
-2. Ninguna cuenta autorizada lee `resumenes` (FR-103), a diferencia del resto del perfil.
+2. Ninguna cuenta autorizada **escribe** `resumenes` (FR-104), aunque sí lo lee (FR-103).
 3. Ninguna regla de cliente agrega una identidad a `uids_autorizados` (FR-085).
 4. Un perfil pendiente de eliminación admite exactamente dos operaciones, ambas del
    propietario (SC-035).
 5. La propagación no modifica ningún campo fuera de las etiquetas duplicadas, y ninguna
    lista de autorizados (FR-069).
-6. Todo vencimiento es un instante absoluto sembrable en una prueba (FR-106 a FR-109).
+6. Todo vencimiento es un instante absoluto sembrable en una prueba (FR-107 a FR-110).
 7. Ningún envío lleva carga de notificación (FR-043, FR-052, FR-096).

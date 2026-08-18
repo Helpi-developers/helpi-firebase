@@ -27,7 +27,8 @@ autorizado · **NAu** no autenticado.
 | `usuarios/{uid}/rutinas/{id}` | leer y escribir | ✅ | ✅ | ❌ | ❌ | FR-003, FR-011 |
 | `usuarios/{uid}/dispositivos/{id}` | leer y escribir | ✅ | ✅ | ❌ | ❌ | FR-011 |
 | `usuarios/{uid}/pictogramas/{id}` | leer y escribir | ✅ | ✅ | ❌ | ❌ | FR-011 |
-| `usuarios/{uid}/resumenes/{fecha}` | leer y escribir | ✅ | **❌** | ❌ | ❌ | FR-102, FR-103 |
+| `usuarios/{uid}/resumenes/{fecha}` | leer | ✅ | ✅ | ❌ | ❌ | FR-102, FR-103 |
+| `usuarios/{uid}/resumenes/{fecha}` | escribir | ✅ | ❌ | ❌ | ❌ | FR-102, FR-104 |
 
 > La fila de `resumenes` es la única asimetría del perfil: una cuenta autorizada tiene acceso
 > a todo lo demás y a esto no. Es el ámbito de traducción (Principio XI). Una prueba debe
@@ -49,9 +50,9 @@ Se aplican **además** de la autorización. Todas se prueban con caso aceptado y
 
 | Condición | Resultado | Requisitos |
 |---|---|---|
-| Solo conteos y duraciones | ✅ aceptada | FR-100 |
+| Solo cumplimiento de rutinas del día | ✅ aceptada | FR-100 |
 | Incluye glosa, texto o transcripción | ❌ rechazada | FR-101 |
-| Segundo documento para el mismo día | ❌ rechazada | FR-104 |
+| Segundo documento para el mismo día | ❌ rechazada | FR-105 |
 
 ### Ventana de gracia
 
@@ -111,6 +112,8 @@ ruta no declarada no existe.
 |---|---|---|---|---|---|---|
 | `usuarios/{uid}/pictogramas/{archivo}` | leer y escribir | ✅ | ✅ | ❌ | ❌ | FR-025 a FR-027 |
 | `usuarios/{uid}/audios/{archivo}` | leer y escribir | ✅ | ✅ | ❌ | ❌ | FR-025 a FR-027 |
+| `pictogramas/**` (globales) | leer | ✅ | ✅ | ✅ | ❌ | FR-028, D-010 |
+| `pictogramas/**` (globales) | escribir | ❌ | ❌ | ❌ | ❌ | FR-029 |
 
 ### Cierre
 

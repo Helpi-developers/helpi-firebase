@@ -84,6 +84,9 @@ cuatro primeras.
 
 - Q: ¿Cómo llega la cuenta de un acompañante a la lista de autorizados de un perfil, si esa cuenta todavía no tiene ningún acceso a ese perfil? (AMB-001) → A: Cuarta función. El acompañante presenta un código de vinculación; la función lo valida con credenciales de administración y agrega su identidad a la lista. El código se emite firmado y con vencimiento, y no se persiste en ningún almacén. La superficie pasa de tres a cuatro funciones.
 - Q: Cuando cambia la etiqueta o la ubicación de un pictograma, ¿cómo quedan al día las copias de ese dato dentro de los pasos de rutina? (AMB-007) → A: Quinta función. Un cambio de pictograma dispara una función que actualiza las copias en las rutinas de todos los perfiles afectados, con credenciales de administración. Se conserva la duplicación del dato dentro del paso. La superficie pasa de cuatro a cinco funciones.
+- Q: ¿La cuenta autorizada puede leer el resumen diario de cumplimiento de rutinas? → A: Sí. Consultar el cumplimiento es la razón por la que el resumen existe, según el modelo de datos compartido. Se elimina la asimetría que denegaba esa lectura y el perfil vuelve a evaluarse con una sola condición.
+- Q: ¿Qué contenido de traducción admite el servidor? → A: Ninguno dentro de esta funcionalidad. El ámbito de traducción existe conceptualmente pero queda **fuera de alcance**: no se define ninguna ruta de lectura ni de escritura. El modelo compartido ubica las métricas de inferencia en el dispositivo, con opt-in explícito.
+- Q: ¿Por qué canal sale el aviso de emergencia, que el modelo de datos dejaba pendiente? → A: Por aviso remoto a los dispositivos de acompañante registrados bajo el perfil, entregado como mensaje de datos según el Principio VII. El aviso telefónico a un contacto de confianza por SMS o llamada queda fuera del alcance de este repositorio.
 - Q: ¿Cómo se comprueba en el entorno de emulación que algo venció, sin esperar los 30 días de la gracia ni los 10 minutos del código? (Historia 7, FR-078, FR-084) → A: Todo vencimiento se expresa como un instante absoluto presente en el dato que vence, nunca como una duración implícita. Una prueba siembra el estado con un instante ya pasado y obtiene el mismo resultado que si hubiera esperado la ventana real. Sin reloj inyectable ni configuración de duraciones.
 - Q: ¿Qué vigencia tiene el código de vinculación y cuántos intentos de canje fallidos se admiten? (FR-078, FR-084) → A: Vigencia de 10 minutos. Se rechazan los canjes posteriores a 5 intentos fallidos en una hora, contados en dos ejes independientes —por cuenta solicitante y por perfil emisor—, aplicando el que se alcance primero. El rechazo por límite es indistinguible del rechazo por código inválido.
 - Q: ¿Quién puede disparar el evento de emergencia de un perfil? (FR-042, FR-048) → A: Únicamente el cliente propietario, sobre su propio perfil. Se deniega a las cuentas autorizadas, a los autenticados no autorizados y a las solicitudes no autenticadas: estar en la lista de autorizados no habilita este disparo.
@@ -158,13 +161,14 @@ comparando el resultado esperado. No requiere ninguna función en ejecución.
 
 **Acceptance Scenarios**:
 
-1. **Given** un cliente autorizado, **When** lee o escribe rutinas, configuración o
-   identificadores de dispositivo del perfil, **Then** la solicitud se **permite**.
-2. **Given** un cliente autorizado, **When** lee cualquier ruta del ámbito de traducción
-   del perfil, **Then** la solicitud se **deniega**.
-3. **Given** el cliente **propietario**, **When** intenta escribir datos del ámbito de
-   traducción, **Then** la solicitud se **deniega**: no existe ninguna ruta que los admita,
-   y la propiedad del perfil no habilita ninguna excepción.
+1. **Given** un cliente autorizado, **When** lee o escribe rutinas, configuración,
+   identificadores de dispositivo o pictogramas personalizados del perfil, **Then** la
+   solicitud se **permite**.
+2. **Given** un cliente autorizado, **When** lee el resumen diario del perfil, **Then** la
+   solicitud se **permite**: consultar el cumplimiento es la razón por la que existe.
+3. **Given** cualquier clase de solicitante, incluida la propietaria, **When** intenta leer
+   o escribir datos del ámbito de traducción, **Then** la solicitud se **deniega** porque
+   **no existe ninguna ruta que los admita**, no porque una regla los rechace.
 4. **Given** un cliente autorizado, **When** escribe una rutina declarando la identidad
    autenticada del propio solicitante y la fecha del servidor, **Then** la solicitud se
    **permite**.
@@ -662,12 +666,12 @@ observando el resultado del servidor.
 #### Alcance del acceso autorizado
 
 - **FR-011**: El servidor DEBE limitar el acceso de un cliente autorizado a las rutinas, la
-  configuración y los identificadores de dispositivo del perfil al que está vinculado.
+  configuración, los identificadores de dispositivo y los pictogramas personalizados del
+  perfil al que está vinculado, más la **lectura** de sus resúmenes diarios (FR-103).
 - **FR-012**: El servidor NO DEBE definir ninguna ruta que admita la escritura de datos del
   ámbito de traducción, para ninguna clase de solicitante, incluida la propietaria.
-- **FR-013**: El servidor DEBE **denegar** a un cliente autorizado toda lectura del ámbito
-  de traducción del perfil, cuyo único contenido admitido es el agregado diario definido en
-  FR-100.
+- **FR-013**: El servidor NO DEBE definir ninguna ruta de lectura del ámbito de traducción.
+  Dentro del alcance de esta funcionalidad no existe contenido de traducción en el servidor.
 - **FR-014**: El servidor DEBE **rechazar** toda escritura sobre una rutina que no declare
   la identidad de la cuenta que la realiza.
 - **FR-015**: El servidor DEBE **rechazar** toda escritura sobre una rutina que no declare
@@ -741,8 +745,9 @@ observando el resultado del servidor.
 
 - **FR-042**: El servidor DEBE **permitir** disparar el evento de emergencia de un perfil
   únicamente al cliente propietario de ese perfil. Disparado el evento, el servidor DEBE
-  emitir un envío a cada identificador de dispositivo registrado de las cuentas autorizadas
-  del perfil.
+  emitir un envío a cada dispositivo registrado **bajo ese mismo perfil** cuyo tipo sea el de
+  acompañante. El aviso remoto es el canal comprometido por esta funcionalidad; el aviso
+  telefónico a un contacto de confianza queda fuera de alcance.
 - **FR-043**: El servidor DEBE emitir el envío en una forma que **no** admita que el
   sistema operativo del cliente lo muestre por su cuenta; el cliente ejecuta su lógica
   antes de que nada se muestre.
@@ -775,7 +780,7 @@ observando el resultado del servidor.
   marcar el perfil como pendiente de eliminación y encolar una tarea diferida de disparo
   único con el vencimiento de la ventana de gracia.
 - **FR-055**: La ventana de gracia DEBE durar **30 días** contados desde la solicitud, y su
-  vencimiento DEBE quedar registrado como instante absoluto según FR-107.
+  vencimiento DEBE quedar registrado como instante absoluto según FR-108.
 - **FR-056**: Mientras un perfil está marcado como pendiente de eliminación, el servidor
   DEBE **denegar** toda lectura y toda escritura sobre ese perfil, incluidas las del cliente
   propietario y las de sus cuentas autorizadas, **con las dos únicas excepciones** de
@@ -901,37 +906,39 @@ observando el resultado del servidor.
   que no está pendiente de eliminación, con un resultado indistinguible del de un perfil
   inexistente.
 
-#### Contenido del ámbito de traducción
+#### Resumen diario de cumplimiento de rutinas
 
-- **FR-100**: El único contenido que el servidor admite en el ámbito de traducción de un
-  perfil es un **agregado diario** compuesto por conteos y duraciones del día.
-- **FR-101**: El servidor NO DEBE admitir en ese agregado ninguna glosa, texto,
-  transcripción ni dato del que pueda reconstruirse lo que la persona usuaria expresó. Una
-  escritura que incluya cualquiera de ellos se **rechaza**.
+- **FR-100**: El resumen diario contiene el **cumplimiento de rutinas del día**: por cada
+  rutina, su identificador, su nombre, y los pasos completados sobre los pasos totales.
+- **FR-101**: El servidor NO DEBE admitir en el resumen ninguna glosa, texto, transcripción
+  ni dato del que pueda reconstruirse lo que la persona usuaria expresó. Una escritura que
+  incluya cualquiera de ellos se **rechaza**.
 - **FR-102**: El servidor DEBE **permitir** al cliente propietario leer y escribir el
-  agregado diario de su propio perfil.
-- **FR-103**: El servidor DEBE **denegar** la lectura y la escritura del agregado diario a
-  los clientes autorizados, a los autenticados no autorizados y a las solicitudes no
-  autenticadas.
-- **FR-104**: El servidor DEBE admitir como máximo una escritura de agregado diario por
-  perfil y por día, y **rechazar** las posteriores dentro del mismo día.
+  resumen diario de su propio perfil.
+- **FR-103**: El servidor DEBE **permitir** a los clientes autorizados leer el resumen
+  diario del perfil al que están vinculados. Consultar el cumplimiento es la razón por la
+  que el resumen existe.
+- **FR-104**: El servidor DEBE **denegar** la lectura y la escritura del resumen a los
+  clientes autenticados no autorizados y a las solicitudes no autenticadas.
+- **FR-105**: El identificador del documento de resumen DEBE ser la fecha, de modo que
+  exista como máximo uno por perfil y por día.
 
 #### Indistinguibilidad de los rechazos de canje
 
-- **FR-105**: El rechazo por límite de tasa DEBE ser indistinguible del rechazo de FR-081,
+- **FR-106**: El rechazo por límite de tasa DEBE ser indistinguible del rechazo de FR-081,
   para no revelar si el código presentado era válido.
 
 #### Expresión de los vencimientos
 
-- **FR-106**: Todo vencimiento DEBE expresarse como un **instante absoluto** presente en el
+- **FR-107**: Todo vencimiento DEBE expresarse como un **instante absoluto** presente en el
   dato que vence, y NO DEBE derivarse de una duración implícita evaluada en el momento de la
   comprobación.
-- **FR-107**: La marca de pendiente de eliminación DEBE llevar el instante de vencimiento de
+- **FR-108**: La marca de pendiente de eliminación DEBE llevar el instante de vencimiento de
   su ventana de gracia; el código de vinculación, el instante de su vencimiento; y cada
   intento fallido de canje, el instante en que ocurrió.
-- **FR-108**: El servidor DEBE determinar que algo venció comparando su instante de
+- **FR-109**: El servidor DEBE determinar que algo venció comparando su instante de
   vencimiento con la hora del servidor, sin ningún otro estado intermedio.
-- **FR-109**: Un estado con instante de vencimiento ya pasado DEBE producir el mismo
+- **FR-110**: Un estado con instante de vencimiento ya pasado DEBE producir el mismo
   resultado que uno que venció por el paso del tiempo, de modo que una prueba pueda sembrar
   el estado vencido sin esperar la ventana real.
 
@@ -994,9 +1001,11 @@ comprueban emitiendo una solicitud.
 - **Rutina**: Dato anidado del perfil. Toda escritura declara la identidad de quien la
   realiza y la fecha del servidor. Sus pasos duplican la etiqueta y la ubicación del
   pictograma que referencian.
-- **Resumen diario**: Dato anidado del perfil, y único contenido admitido del ámbito de
-  traducción. Conteos y duraciones del día; nunca glosas, texto ni transcripción. Una
-  escritura por perfil y por día. Legible solo por el propietario.
+- **Resumen diario**: Dato anidado del perfil. Cumplimiento de rutinas del día: por cada
+  rutina, identificador, nombre y pasos completados sobre totales. Nunca glosas, texto ni
+  transcripción. El identificador del documento es la fecha, de modo que existe como máximo
+  uno por perfil y por día. Escribible por el propietario, **legible también por las cuentas
+  autorizadas**.
 - **Identificador de dispositivo**: Destino de envío registrado bajo el perfil. Se depura
   cuando el proveedor de envío lo reporta como inválido.
 - **Entrada de catálogo**: Elemento del catálogo de señas. Lleva fecha de última
@@ -1090,9 +1099,10 @@ comprueban emitiendo una solicitud.
   tercero.
 - **SC-035**: Un perfil pendiente de eliminación admite exactamente 2 operaciones del
   propietario y 0 de cualquier otra clase de solicitante.
-- **SC-036**: Se aceptan 0 escrituras de agregado diario que incluyan glosas, texto o
-  transcripción, y como máximo 1 agregado por perfil y por día.
-- **SC-037**: Las cuentas autorizadas obtienen 0 lecturas exitosas del agregado diario.
+- **SC-036**: Se aceptan 0 escrituras de resumen que incluyan glosas, texto o transcripción,
+  y existe como máximo 1 resumen por perfil y por día.
+- **SC-037**: Las cuentas autorizadas obtienen lectura exitosa del resumen diario en el
+  100 % de los intentos, y 0 escrituras aceptadas sobre él.
 - **SC-038**: Solo el propietario puede disparar el evento de emergencia: 0 disparos
   exitosos desde cuentas autorizadas, autenticadas no autorizadas o no autenticadas.
 - **SC-039**: Se aceptan 0 canjes de códigos con más de 10 minutos de emitidos, y 0 canjes
@@ -1137,11 +1147,13 @@ Supuestos adoptados donde la descripción no fijaba un valor. Cada uno es revisa
 - **La lista de autorizados es un campo del propio documento de perfil.** Es lo que permite
   evaluar la autorización en la misma regla que protege el documento. AMB-005 puede
   cambiarlo.
-- **El ámbito de traducción se divide en dos.** Lo que **nunca** se almacena —secuencias de
-  señas reconocidas, contenido de conversaciones, historial— no tiene ruta definida: FR-012
-  se interpreta como ausencia de ruta, no como denegación. Lo que **sí** se almacena es
-  únicamente el agregado diario de FR-100, y sobre él sí hay una regla de acceso que
-  denegar (FR-103). Esa separación es la que hace verificable a FR-013.
+- **El ámbito de traducción queda fuera del alcance de esta funcionalidad.** FR-012 y FR-013
+  se interpretan como ausencia de ruta: no existe en el servidor ninguna ubicación de lectura
+  ni de escritura para datos de traducción, así que no hay regla de acceso que probar sobre
+  ellos, solo la inexistencia de la ruta. El modelo de datos compartido ubica las métricas de
+  inferencia en el dispositivo, con opt-in explícito; si alguna vez suben al servidor, será
+  materia de otra funcionalidad.
+
 - **La fecha de una escritura de rutina la fija el servidor**, no el cliente. Un valor
   declarado por el cliente que no coincida se rechaza (FR-017).
 - **Los resúmenes diarios son agregados producidos fuera del servidor** y el servidor solo
@@ -1184,6 +1196,10 @@ Queda **fuera de este repositorio**, y por lo tanto de esta especificación:
   y cómo el cliente presenta cualquier información.
 - El entrenamiento del modelo y el procesamiento del conjunto de datos.
 - Cualquier inferencia del lado del servidor.
+- **El ámbito de traducción completo**: métricas de inferencia, sesiones e historial. El
+  modelo de datos compartido los ubica en el dispositivo, con opt-in explícito.
+- **El aviso telefónico a un contacto de confianza** por SMS, mensajería o llamada. Sale del
+  dispositivo, no del servidor.
 - Interfaz de usuario de cualquier tipo: no existe cliente web.
 
 Las especificaciones del dispositivo viven en el repositorio de la aplicación y se
