@@ -1,13 +1,61 @@
 <!--
 Sync Impact Report
 ==================
-Cambio de versión: plantilla sin completar → 1.0.0
-Motivo del salto: ratificación inicial. El archivo previo era el andamio
+Cambio de versión: 1.0.0 → 1.1.0
+Motivo del salto: MINOR. Se amplía materialmente la guía del Principio II —la
+superficie de servidor comprometida pasa de tres funciones a cinco— sin eliminar
+ni redefinir ningún principio de forma incompatible. Ninguna regla previa deja de
+valer: lo que era exigible sigue siéndolo, y se agregan dos capacidades con su
+justificación.
+
+Por qué MINOR y no MAJOR: la sección de Gobernanza establece que relajar un
+principio NO NEGOCIABLE —y el II lo es— es siempre MAJOR. La clasificación como
+MINOR se sostiene en que **el núcleo exigible del Principio II no se relajó**. Lo
+no negociable de ese principio es que toda función declare por qué no puede
+resolverse en el dispositivo; esa exigencia sigue intacta y de hecho se refuerza,
+porque ahora ampliar la lista requiere enmendar esta constitución. Lo que cambió
+es la enumeración, y cada agregado llegó con la justificación que el principio
+reclama: el principio se aplicó, no se eludió. Si en una enmienda futura se
+agregara una función sin esa justificación, eso sí sería relajarlo y exigiría
+MAJOR.
+
+Principios modificados:
+  II. Ejecución local primero — la lista cerrada de funciones pasa de tres a
+      cinco. Se agregan "alta de un acompañante en la lista de autorizados" y
+      "propagación de los datos duplicados de un pictograma", cada una con la
+      razón por la que no puede resolverse en el dispositivo. Se agrega la
+      exigencia explícita de que ampliar la lista requiere enmendar esta
+      constitución, no basta una decisión en la especificación de una
+      funcionalidad.
+
+Principios añadidos: ninguno. Principios eliminados: ninguno.
+Secciones añadidas o eliminadas: ninguna.
+
+Origen de la enmienda: las dos funciones nuevas se decidieron en la sesión de
+clarificación del 2026-08-18 registrada en
+specs/001-superficie-servidor/spec.md § Clarifications (AMB-001 y AMB-007). El
+plan de esa funcionalidad las declaró como violación documentada del Principio II
+en su Complexity Tracking; esta enmienda cierra esa divergencia.
+
+Artefactos que quedan alineados por esta enmienda:
+  - specs/001-superficie-servidor/plan.md § Constitution Check (violación de II)
+  - specs/001-superficie-servidor/checklists/requirements.md (nota "El alcance creció")
+  - specs/001-superficie-servidor/checklists/validacion.md (hallazgo CHK034)
+
+Tensión que esta enmienda NO resuelve: FR-093 de la funcionalidad 001 conserva el
+nombre visible de una cuenta eliminada, lo que sigue en tensión con el Principio
+IV. Queda marcada como revisable en spec.md § Assumptions y requiere decisión
+propia.
+
+TODO pendientes: ninguno.
+
+--- Historial ---
+
+Versión 1.0.0 (2026-08-18): ratificación inicial. El archivo previo era el andamio
 `constitution-template` con todos los marcadores sin resolver; no existía
 gobernanza vigente que pudiera romperse.
 
-Principios modificados: ninguno (no había principios previos).
-Principios añadidos (16):
+Principios añadidos en 1.0.0 (16):
   I.    La especificación manda
   II.   Ejecución local primero
   III.  Las funciones son pegamento liviano
@@ -25,19 +73,15 @@ Principios añadidos (16):
   XV.   Sin suposición de propagación instantánea
   XVI.  Las fases de especificación no producen código
 
-Secciones añadidas:
+Secciones añadidas en 1.0.0:
   - Alcance del repositorio y stack obligatorio (SECTION_2)
   - Flujo de trabajo y puertas de calidad (SECTION_3)
   - Gobernanza
-
-Secciones eliminadas: ninguna.
 
 Notas de estructura: la plantilla base define cinco principios de ejemplo; la
 entrada del proyecto define dieciséis y se respeta ese número. Los encabezados
 conservan el nivel de la plantilla y se expresan en español, coherente con el
 resto de la documentación del proyecto.
-
-TODO pendientes: ninguno. Todos los marcadores fueron resueltos.
 -->
 
 # Constitución de helpi-firebase
@@ -73,11 +117,25 @@ servidor hace de más.
 
 Toda función nueva EXIGE justificación explícita, escrita en la especificación, de por
 qué no puede resolverse en el dispositivo. La superficie de servidor comprometida es
-deliberadamente mínima y se limita a: aviso a contactos de confianza, publicación de
-novedades por temas y borrado en cascada al eliminar una cuenta.
+deliberadamente mínima y se limita a **cinco funciones**:
+
+| # | Función | Por qué no puede resolverse en el dispositivo |
+|---|---|---|
+| 1 | Aviso a contactos de confianza | Lee los destinos de envío de cuentas ajenas y envía con credenciales de servidor |
+| 2 | Publicación de novedades por temas | El envío a un tema exige credenciales de servidor |
+| 3 | Borrado en cascada al eliminar una cuenta | Recorre y borra perfiles ajenos y sus archivos |
+| 4 | Alta de un acompañante en la lista de autorizados | Escribe en un perfil sobre el que quien canjea el código todavía no tiene ningún acceso |
+| 5 | Propagación de los datos duplicados de un pictograma | Escribe en rutinas de perfiles ajenos al que originó el cambio |
+
+Las funciones 4 y 5 se incorporaron por enmienda, no por deriva: su justificación consta en
+`specs/001-superficie-servidor/spec.md § Clarifications` y en `research.md § R-001`. Las
+cinco comparten la misma razón de fondo: **escriben sobre datos a los que el cliente que
+las origina no tiene acceso**, o requieren credenciales de envío que ningún cliente puede
+tener.
 
 Sumar puntos de acceso es una erosión del principio, no una mejora. Una función sin esa
-justificación se rechaza en revisión.
+justificación se rechaza en revisión. **Ampliar esta lista exige una enmienda a esta
+constitución**, no basta con una decisión en la especificación de una funcionalidad.
 
 **Fundamento:** reconocimiento, voz y rutinas DEBEN funcionar sin conexión. Cada
 capacidad que migra al servidor es una capacidad que deja de funcionar cuando la persona
@@ -365,4 +423,4 @@ como deuda.
 
 **Guía de desarrollo en tiempo de ejecución:** `CLAUDE.md` en la raíz del repositorio.
 
-**Version**: 1.0.0 | **Ratified**: 2026-08-18 | **Last Amended**: 2026-08-18
+**Version**: 1.1.0 | **Ratified**: 2026-08-18 | **Last Amended**: 2026-08-18
