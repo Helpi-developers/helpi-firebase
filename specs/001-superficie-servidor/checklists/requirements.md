@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-08-18
-**Last Updated**: 2026-08-18 (revisión: perímetro acotado a comportamiento observable del servidor)
+**Last Updated**: 2026-08-18 (revalidación tras `/speckit-clarify`: 5 decisiones integradas)
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -28,14 +28,14 @@
 - [x] All functional requirements have clear acceptance criteria
 - [x] User scenarios cover primary flows
 - [x] Feature meets measurable outcomes defined in Success Criteria
-- [ ] **No implementation details leak into specification** — ver nota sobre FR-023
+- [ ] **No implementation details leak into specification** — ver nota abajo
 
 ## Verificabilidad contra el entorno de emulación
 
 Regla de redacción declarada en la especificación: cada requisito debe poder verificarse
 emitiendo una solicitud contra el entorno de emulación, sin dispositivo.
 
-- [x] Los 65 requisitos funcionales se expresan como permitido / denegado / aceptado /
+- [x] Los 94 requisitos funcionales se expresan como permitido / denegado / aceptado /
       rechazado / presente / ausente
 - [x] Ningún requisito funcional describe comportamiento interno ni presentación del cliente
 - [x] Los 8 requisitos no funcionales declaran su método de verificación
@@ -43,29 +43,39 @@ emitiendo una solicitud contra el entorno de emulación, sin dispositivo.
       tales (NFR-003, NFR-004, NFR-005, NFR-007: revisión de diseño)
 - [x] Los enunciados retirados por no ser verificables están listados con su motivo y su
       destino (sección "Enunciados excluidos deliberadamente", 7 entradas)
+- [ ] **El vencimiento de la ventana de gracia es comprobable sin esperar 30 días** — la
+      spec no dice cómo se adelanta el reloj en el entorno de emulación. Afecta a los
+      escenarios 6 a 10 y 16 de la Historia 7 y a SC-029 y SC-030.
 
 ## Superficie comprometida
 
-- [x] Las tres funciones comprometidas están cubiertas por una historia cada una
-      (Historias 4, 8 y 7)
-- [x] Toda capacidad adicional que los requisitos exigen está marcada como ambigüedad con
-      su justificación, no incorporada (AMB-001, AMB-007)
-- [x] Ninguna función se dispara por sondeo ni permanece en ejecución (FR-063 a FR-065)
+- [x] Las cinco funciones comprometidas están cubiertas por una historia cada una
+      (Historias 4, 8, 7, 10 y 9)
+- [x] Cada función incorporada tras la constitución inicial declara su justificación frente
+      al Principio II (funciones 4 y 5, sección "Superficie comprometida")
+- [x] Ninguna capacidad adicional quedó incorporada sin decisión explícita
+- [x] Ninguna función se dispara por sondeo ni permanece en ejecución (FR-072 a FR-074)
+- [x] La ejecución diferida del borrado es de disparo único y no un barrido periódico
+      (FR-057, escenario 12 de la Historia 7, SC-029)
+- [ ] **La función 5 concentra el mayor riesgo del repositorio y no tiene checklist de
+      revisión propio** — escribe en abanico sobre perfiles ajenos eludiendo por diseño la
+      regla de separación. FR-064 a FR-071 acotan qué puede tocar, pero conviene un
+      `/speckit-checklist` dedicado antes de implementarla.
 
 ## Constitution Alignment
 
 Verificación contra `.specify/memory/constitution.md` v1.0.0.
 
-- [x] Principio II — la superficie se declara acotada y toda adición queda marcada, no
-      incorporada (NFR-007, AMB-001, AMB-007)
-- [x] Principio III — disparo por evento, sin sondeo ni ejecución permanente (FR-063 a FR-065)
+- [x] Principio II — cada capacidad declara por qué no puede resolverse en el cliente
+      (NFR-007, sección "Superficie comprometida")
+- [x] Principio III — disparo por evento, sin sondeo ni ejecución permanente (FR-072 a FR-074)
 - [x] Principio IV — la prohibición se expresa como ausencia de ruta, verificable
       (FR-012, FR-031, FR-045, SC-007, SC-008, SC-015)
 - [x] Principio V — las cuatro clases de solicitante tienen resultado esperado en cada regla
       (FR-009, SC-002)
 - [x] Principio VI — caso permitido y caso denegado en toda regla (NFR-006, SC-001)
 - [x] Principio VII — la restricción de forma de entrega se expresa sin nombrar el mecanismo
-      (FR-043, FR-052, SC-016)
+      (FR-043, FR-052, FR-094, SC-016)
 - [x] Principio VIII — publicación indivisible, sin sobrescritura, con validación de
       correspondencia (FR-032 a FR-041)
 - [x] Principio IX — dos zonas sin solapamiento ni hueco (FR-030, Historia 3 escenario 8)
@@ -75,57 +85,54 @@ Verificación contra `.specify/memory/constitution.md` v1.0.0.
       credenciales de administración y de cliente en un mismo test (Assumptions)
 - [x] Principio XIII — manejo de errores explícito (NFR-008, FR-049)
 - [x] Principio XVI — no se produjo código, solo documentos de especificación
+- [ ] **Principio IV frente a FR-091** — conservar el nombre visible de una cuenta eliminada
+      es un dato personal de alguien que ejerció su derecho de supresión. La tensión está
+      declarada en Assumptions y es revisable; requiere confirmación de un revisor.
 
 ## Notes
 
-### Ítem abierto: FR-023 (índice de consulta)
+### Ítem abierto: detalles de implementación
 
-FR-023 exige que exista el índice que soporta la consulta por diferencia. Es lo más cerca
-de un detalle de implementación que hay en el documento. **Se mantiene deliberadamente**
-por dos razones: el usuario lo pidió de forma explícita ("Debe existir el índice que lo haga
-posible"), y los índices son uno de los artefactos que este repositorio contiene, de modo
-que su ausencia es un fallo observable —la consulta se rechaza— y no una decisión interna.
-Queda marcado sin tildar para que un revisor lo confirme o lo reformule.
+Tres enunciados son lo más cerca de un detalle de implementación que hay en el documento.
+**Se mantienen deliberadamente** y el ítem queda sin tildar para que un revisor los confirme
+o los reformule:
 
-### Ambigüedades abiertas
+1. **FR-023 y FR-066 (índices de consulta).** Los índices son uno de los artefactos que este
+   repositorio contiene, y su ausencia es un fallo observable —la consulta se rechaza—, no
+   una decisión interna.
+2. **FR-054 y FR-057 (tarea diferida de disparo único).** Nombran un mecanismo, no solo un
+   resultado. Fue necesario para distinguir la ejecución diferida admitida del barrido
+   periódico que FR-072 prohíbe; sin esa distinción el requisito no sería verificable.
 
-Siete ambigüedades registradas en la sección "Ambigüedades abiertas" (AMB-001 a AMB-007).
-No se usó el marcador `[NEEDS CLARIFICATION]` porque bloquea el flujo de `/speckit-specify`
-y obligaría a resolverlas en esta fase, contra el pedido explícito de marcarlas y no
-resolverlas. Se resuelven en `/speckit-clarify`.
+### Ambigüedades
 
-**Cuatro son bloqueantes para `/speckit-plan`:**
+Cinco de las siete quedaron resueltas en la sesión de clarificación del 2026-08-18. Sus
+decisiones están en `## Clarifications` y su aplicación en la tabla de resueltas.
 
-- **AMB-001** y **AMB-007** son contradicciones entre los requisitos de esta especificación
-  y la superficie comprometida de tres funciones. Ambas se detectaron al redactar, no
-  estaban en la entrada como tales:
-  - AMB-001 (validación del código de vinculación) sí venía señalada en la entrada.
-  - **AMB-007 (propagación de referencias duplicadas a un pictograma) es nueva.** El
-    requisito funcional 9 de la entrada exige una escritura sobre perfiles ajenos
-    desencadenada por otra escritura: eso no lo puede hacer un cliente y no está entre las
-    tres funciones. Se marcó en lugar de incorporarse, y la Historia 9 quedó explícitamente
-    condicionada.
-- **AMB-002** (retención de versiones anteriores) y **AMB-003** (inmediatez del borrado)
-  afectan a requisitos ya escritos: FR-039/SC-014 y FR-057/SC-018 respectivamente.
+| # | Estado | Efecto sobre el alcance |
+|---|---|---|
+| AMB-001 | Resuelta | Suma la función 4 (alta de acompañante) |
+| AMB-007 | Resuelta | Suma la función 5 (propagación de pictograma) |
+| AMB-003 | Resuelta | Reescribe la Historia 7 en dos tiempos y suma ejecución diferida |
+| AMB-002 | Resuelta | Acota la reversión a 3 versiones |
+| AMB-004 | Resuelta | Suma FR-089 a FR-094 y un aviso nuevo |
+| AMB-005 | Abierta, no bloqueante | Umbral de costo de la evaluación de autorización |
+| AMB-006 | Abierta, no bloqueante | Expresión del consentimiento de un adulto responsable |
 
-**Consecuencia práctica**: mientras AMB-001 no se resuelva, la lista de autorizados —de la
-que depende toda la Historia 1— solo puede poblarse por un medio no especificado. Es la
-ambigüedad más urgente.
+**Ninguna ambigüedad bloqueante queda abierta.** Las dos restantes no impiden planificar:
+AMB-005 depende de cifras de uso que todavía no existen, y AMB-006 puede resolverse
+declarando que no tiene expresión en el servidor.
 
-### Cambios respecto de la versión anterior de la especificación
+### El alcance creció
 
-- Se reescribió por completo en términos de comportamiento observable del servidor.
-- Se retiraron 7 enunciados sobre el dispositivo, listados en la tabla "Enunciados
-  excluidos deliberadamente" con su motivo y su destino.
-- La historia de vinculación de acompañante desapareció como tal: lo verificable del lado
-  del servidor —quién modifica la lista de autorizados y qué efecto tiene— quedó en las
-  Historias 1 y 2; la validación del código pasó a ser AMB-001.
-- Los requisitos no funcionales pasaron de 14 a 8 y cada uno declara su método de
-  verificación, para no afirmar que se comprueba por emulación algo que se comprueba por
-  revisión.
-- El campo **Input** de la cabecera lleva una paráfrasis de la descripción del usuario en
-  lugar de su texto literal, para no introducir nombres de tecnología en un documento cuya
-  regla es no mencionarlos.
+La superficie pasó de tres funciones a cinco, y los requisitos funcionales de 65 a 94. El
+crecimiento proviene de decisiones explícitas, no de deriva, pero conviene tenerlo presente
+al planificar: la constitución vigente (Principio II) describe la superficie comprometida
+como tres funciones y esa cifra quedó desactualizada.
+
+**Acción sugerida**: enmendar `.specify/memory/constitution.md` para reflejar las cinco
+funciones antes de `/speckit-plan`, o dejar constancia de por qué no se enmienda. Es un
+cambio MINOR según la política de versionado de la propia constitución.
 
 ---
 

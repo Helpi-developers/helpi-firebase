@@ -36,21 +36,32 @@ pertenece a esta especificación.
 
 ### Superficie comprometida
 
-La arquitectura acota el servidor a **tres funciones**:
+La arquitectura acota el servidor a **cinco funciones**:
 
 | # | Función | Disparador |
 |---|---|---|
 | 1 | Aviso a contactos de confianza | Evento de emergencia |
 | 2 | Publicación de novedades por temas | Publicación de contenido nuevo |
-| 3 | Borrado en cascada al eliminar una cuenta | Eliminación de una cuenta |
+| 3 | Borrado en cascada al eliminar una cuenta | Solicitud de eliminación, cancelación, y vencimiento de la ventana de gracia |
+| 4 | Alta de un acompañante en la lista de autorizados | Canje de un código de vinculación |
+| 5 | Propagación de los datos duplicados de un pictograma | Cambio de etiqueta o ubicación de un pictograma |
 
 Todo lo demás se resuelve con **reglas de acceso, índices de consulta y el proceso de
 publicación**, sin código de servidor en ejecución.
 
-Esta especificación identificó **dos capacidades adicionales** que sus propios requisitos
-parecen exigir y que **no** están entre las tres comprometidas. No se incorporaron: quedan
-marcadas como **AMB-001** y **AMB-007**, con su justificación, para decidirse
-explícitamente.
+Las funciones 4 y 5 se incorporaron por decisión explícita registrada en
+`## Clarifications`. Su justificación frente al Principio II:
+
+- **Función 4**: es una escritura sobre el perfil de otra cuenta, que ningún cliente puede
+  realizar por definición, porque quien canjea el código todavía no figura en ninguna lista
+  de autorizados.
+- **Función 5**: es una escritura sobre documentos de perfiles ajenos al que originó el
+  cambio; ningún cliente tiene acceso a esos perfiles.
+
+> **Nota de riesgo sobre la función 5.** Es la única operación del repositorio que escribe
+> en abanico sobre perfiles de terceros con credenciales de administración, es decir, la
+> única que por diseño elude la regla que separa un perfil de otro. Los requisitos FR-064 a
+> FR-071 acotan qué puede tocar; su revisión es obligatoria ante cualquier cambio.
 
 ### Actores
 
@@ -64,6 +75,18 @@ cuatro primeras.
 | **Cliente no autorizado** | Autenticado; no es propietario ni figura en la lista de autorizados. |
 | **Cliente no autenticado** | Sin identidad. |
 | **Proceso de publicación** | Opera con credenciales de administración. Queda **fuera del alcance de las reglas de cliente**; su comportamiento se verifica por separado. |
+
+---
+
+## Clarifications
+
+### Session 2026-08-18
+
+- Q: ¿Cómo llega la cuenta de un acompañante a la lista de autorizados de un perfil, si esa cuenta todavía no tiene ningún acceso a ese perfil? (AMB-001) → A: Cuarta función. El acompañante presenta un código de vinculación; la función lo valida con credenciales de administración y agrega su identidad a la lista. El código se emite firmado y con vencimiento, y no se persiste en ningún almacén. La superficie pasa de tres a cuatro funciones.
+- Q: Cuando cambia la etiqueta o la ubicación de un pictograma, ¿cómo quedan al día las copias de ese dato dentro de los pasos de rutina? (AMB-007) → A: Quinta función. Un cambio de pictograma dispara una función que actualiza las copias en las rutinas de todos los perfiles afectados, con credenciales de administración. Se conserva la duplicación del dato dentro del paso. La superficie pasa de cuatro a cinco funciones.
+- Q: Cuando un acompañante elimina su propia cuenta, ¿qué pasa con los audios y pictogramas que grabó dentro de la zona por cuenta del perfil al que acompañaba? (AMB-004) → A: Se conservan en el perfil de destino, cuyo propietario es su dueño. De la cuenta eliminada sobrevive el nombre visible que tenía al vincularse; su identificador se reemplaza por una marca de cuenta eliminada. La persona usuaria recibe un aviso de que un vínculo suyo se está cerrando, pero ese aviso es informativo: no bloquea la eliminación de la cuenta del tutor, porque el derecho de supresión de esa cuenta no admite veto de un tercero.
+- Q: Al confirmar una versión nueva de modelo y catálogo, ¿qué pasa con las versiones anteriores? (AMB-002) → A: Se conservan las últimas 3 versiones. Al confirmar una nueva, la más antigua fuera de esa ventana se elimina, salvo que sea la versión vigente. La reversión de FR-039 alcanza únicamente a las versiones dentro de la ventana.
+- Q: ¿El borrado en cascada corre de inmediato o hay un período de gracia durante el cual la cuenta puede recuperarse? (AMB-003) → A: Período de gracia. La solicitud marca el perfil como pendiente de eliminación y le deniega todo acceso; el borrado efectivo corre al vencer la ventana. Se ejecuta mediante una tarea diferida de disparo único, encolada en el momento de la solicitud, no mediante un barrido periódico, para no violar FR-072.
 
 ---
 
@@ -306,6 +329,13 @@ catálogo correspondiente.
 8. **Given** un indicador de versión vigente que apunta a una versión inexistente, **When**
    se evalúa el estado del sistema, **Then** la condición es detectable: existe una
    comprobación que la identifica en lugar de dejarla pasar en silencio.
+9. **Given** cuatro versiones publicadas, **When** se confirma una quinta, **Then** las tres
+   más recientes permanecen disponibles y las que quedan fuera de esa ventana dejan de
+   existir con sus tres artefactos.
+10. **Given** una versión fuera de la ventana de retención que además es la vigente,
+    **When** se confirma una versión nueva, **Then** esa versión **no** se elimina.
+11. **Given** una versión eliminada por retención, **When** se intenta designarla vigente,
+    **Then** la operación se **rechaza** y el indicador conserva su valor anterior.
 
 ---
 
@@ -313,36 +343,64 @@ catálogo correspondiente.
 
 *Función comprometida n.º 3.*
 
-Al eliminarse una cuenta, la función borra el documento de perfil, todos sus datos anidados
-y todos sus archivos binarios, y elimina las referencias a esa cuenta en las listas de
-autorizados de otros perfiles. Al completarse, ninguna ruta asociada devuelve datos. Es
-reintentable sin efectos indeseados.
+La eliminación ocurre en dos tiempos. La **solicitud** marca el perfil como pendiente de
+eliminación, le deniega todo acceso y encola una tarea diferida de disparo único. Al
+**vencer la ventana de gracia**, esa tarea ejecuta el borrado: documento de perfil, datos
+anidados, archivos binarios, y las referencias a esa cuenta en las listas de autorizados de
+otros perfiles. Dentro de la ventana, el propietario puede cancelar y recuperar el acceso.
 
 **Why this priority**: El derecho de supresión de la Ley N.º 25.326 debe ser operable y
 verificable. Es P2 porque solo opera sobre datos que ya existen, pero no puede quedar fuera
 de la primera entrega desplegable.
 
 **Independent Test**: Se verifica creando un perfil con datos anidados, archivos binarios y
-presencia en la lista de autorizados de un segundo perfil; disparando la eliminación; y
-recorriendo exhaustivamente las rutas asociadas. La reintentabilidad se verifica
-interrumpiendo la función y volviendo a dispararla.
+presencia en la lista de autorizados de un segundo perfil; solicitando la eliminación;
+comprobando la denegación de acceso durante la gracia; y adelantando el vencimiento para
+recorrer exhaustivamente las rutas asociadas. La cancelación y la reintentabilidad se
+prueban por separado.
 
 **Acceptance Scenarios**:
 
-1. **Given** una cuenta con documento de perfil y datos anidados, **When** se dispara la
-   eliminación, **Then** el documento y todos sus datos anidados dejan de existir.
-2. **Given** una cuenta con archivos binarios en la zona por cuenta, **When** se dispara la
-   eliminación, **Then** esas ubicaciones dejan de devolver contenido.
-3. **Given** una cuenta cuya identidad figura en la lista de autorizados de otro perfil,
-   **When** se dispara la eliminación, **Then** esa referencia se elimina de esa lista y el
-   otro perfil permanece intacto en todo lo demás.
-4. **Given** una eliminación completada, **When** se recorren todas las rutas asociadas a
-   la cuenta, **Then** ninguna devuelve datos.
-5. **Given** una eliminación interrumpida a la mitad, **When** se vuelve a disparar,
-   **Then** completa el borrado y termina sin error; volver a ejecutarla sobre una cuenta ya
-   borrada tampoco produce error.
-6. **Given** un cliente autenticado, **When** intenta disparar la eliminación de una cuenta
-   que no es la suya, **Then** la solicitud se **deniega**.
+1. **Given** un cliente propietario, **When** solicita la eliminación de su cuenta,
+   **Then** la solicitud se **permite**, el perfil queda marcado como pendiente y se encola
+   una tarea diferida de disparo único con el vencimiento de la ventana.
+2. **Given** un perfil marcado como pendiente de eliminación, **When** su propietario lee o
+   escribe cualquier ruta de ese perfil, **Then** la solicitud se **deniega**.
+3. **Given** un perfil marcado como pendiente, **When** una cuenta autorizada de ese perfil
+   lee o escribe cualquier ruta, **Then** la solicitud se **deniega**.
+4. **Given** un perfil marcado como pendiente, **When** su propietario cancela la
+   eliminación antes del vencimiento, **Then** la marca se retira, la tarea diferida queda
+   sin efecto y el acceso vuelve a **permitirse**.
+5. **Given** un perfil marcado como pendiente, **When** un cliente que no es su propietario
+   intenta cancelar la eliminación, **Then** la solicitud se **deniega**.
+6. **Given** una ventana de gracia vencida, **When** la tarea diferida se dispara, **Then**
+   el documento de perfil y todos sus datos anidados dejan de existir.
+7. **Given** la misma ejecución, **When** se inspecciona la zona por cuenta, **Then** las
+   ubicaciones de archivos binarios de esa cuenta dejan de devolver contenido.
+8. **Given** una cuenta cuya identidad figura en la lista de autorizados de otro perfil,
+   **When** vence su ventana y corre el borrado, **Then** esa referencia se elimina de esa
+   lista y el otro perfil permanece intacto en todo lo demás.
+9. **Given** un borrado completado, **When** se recorren todas las rutas asociadas a la
+   cuenta, **Then** ninguna devuelve datos.
+10. **Given** un borrado interrumpido a la mitad, **When** se vuelve a disparar, **Then**
+    completa la operación y termina sin error; volver a ejecutarlo sobre una cuenta ya
+    borrada tampoco produce error.
+11. **Given** un cliente autenticado, **When** intenta solicitar la eliminación de una
+    cuenta que no es la suya, **Then** la solicitud se **deniega**.
+12. **Given** el conjunto de funciones, **When** se inspecciona cómo se dispara el borrado
+    efectivo, **Then** proviene de una tarea encolada en el momento de la solicitud y no de
+    ningún barrido periódico que busque cuentas vencidas.
+13. **Given** una cuenta que escribió audios y pictogramas en la zona por cuenta de otro
+    perfil, **When** se completa su borrado, **Then** esos archivos siguen existiendo y el
+    propietario de ese otro perfil los sigue leyendo y escribiendo.
+14. **Given** los registros de autoría de ese otro perfil, **When** se completa el borrado,
+    **Then** el identificador de la cuenta eliminada fue reemplazado por una marca de cuenta
+    eliminada, y el nombre visible al vincularse y la fecha del cambio se conservan.
+15. **Given** una cuenta que figura en la lista de autorizados de otro perfil, **When**
+    entra en eliminación, **Then** ese perfil recibe un aviso del cierre del vínculo, con la
+    misma forma de entrega que el aviso de emergencia y sin datos sensibles.
+16. **Given** ese aviso sin respuesta, **When** vence la ventana de gracia, **Then** el
+    borrado se completa igual: la falta de respuesta de un tercero no lo bloquea.
 
 ---
 
@@ -385,13 +443,17 @@ con lecturas adicionales.
 ubicación dentro del paso para que leer una rutina sea una sola lectura—. Sin esta
 historia, un pictograma renombrado conserva la etiqueta vieja dentro de las rutinas.
 
-> **Condicionada a AMB-007.** Cumplir esta historia exige una capacidad de servidor que
-> **no** está entre las tres comprometidas. Se especifica el resultado esperado, pero la
-> historia **no debe planificarse ni implementarse** hasta que AMB-007 se resuelva.
+*Función comprometida n.º 5. Incorporada por la decisión registrada en `## Clarifications`.*
 
-**Independent Test**: Se verifica creando una rutina con una referencia duplicada,
-modificando el pictograma referenciado, y leyendo la rutina para comprobar que la
-referencia refleja el valor nuevo en una sola lectura.
+> **Es la operación de mayor riesgo del repositorio.** Escribe en abanico sobre perfiles
+> ajenos al que originó el cambio, con credenciales de administración, eludiendo por diseño
+> la regla que separa un perfil de otro. Los escenarios 4 a 8 existen para acotar
+> exactamente qué puede tocar.
+
+**Independent Test**: Se verifica creando rutinas en dos perfiles distintos que referencian
+el mismo pictograma, modificando el pictograma, y comprobando que ambas rutinas reflejan el
+valor nuevo, que ningún otro campo de esos perfiles cambió, y que reejecutar la propagación
+no produce efectos adicionales.
 
 **Acceptance Scenarios**:
 
@@ -400,10 +462,75 @@ referencia refleja el valor nuevo en una sola lectura.
    referencian quedan actualizados.
 2. **Given** una rutina actualizada, **When** un cliente la lee, **Then** obtiene la
    etiqueta y la ubicación vigentes sin lecturas adicionales por paso.
-3. **Given** un pictograma referenciado por rutinas de varios perfiles, **When** cambia su
-   etiqueta, **Then** las rutinas de todos esos perfiles quedan actualizadas.
-4. **Given** la actualización propagada, **When** se inspecciona el resultado, **Then** las
-   reglas de acceso de cada perfil no fueron eludidas ni modificadas por la propagación.
+3. **Given** un pictograma global referenciado por rutinas de varios perfiles, **When**
+   cambia su etiqueta, **Then** las rutinas de todos esos perfiles quedan actualizadas.
+4. **Given** la propagación ejecutada, **When** se comparan los perfiles afectados antes y
+   después, **Then** los únicos campos modificados son la etiqueta y la ubicación
+   duplicadas dentro de los pasos que referencian ese pictograma.
+5. **Given** un pictograma **personalizado** de un perfil, **When** cambia su etiqueta,
+   **Then** la propagación alcanza únicamente las rutinas de ese perfil y ninguna de otro.
+6. **Given** la propagación ejecutada, **When** se inspeccionan las listas de autorizados
+   de los perfiles afectados, **Then** ninguna cambió.
+7. **Given** una propagación interrumpida a la mitad, **When** se vuelve a disparar,
+   **Then** completa la actualización y termina sin error; reejecutarla sobre un estado ya
+   propagado no produce efectos adicionales.
+8. **Given** un cambio de pictograma, **When** se dispara la propagación, **Then** la
+   función determina qué rutinas lo referencian mediante una consulta con índice, sin
+   recorrer los perfiles que no lo referencian.
+
+---
+
+### User Story 10 - Alta de un acompañante en la lista de autorizados (Priority: P1)
+
+*Función comprometida n.º 4. Incorporada por la decisión registrada en `## Clarifications`.*
+
+El propietario obtiene un código de vinculación firmado y con vencimiento. Un cliente
+autenticado lo presenta, la función lo valida y agrega su identidad a la lista de
+autorizados del perfil que emitió el código. El código no se persiste en ningún almacén.
+
+> **Nota de numeración**: esta historia se numera al final para no invalidar las
+> referencias existentes a las Historias 1 a 9. Su prioridad es **P1**: es la única vía
+> especificada para poblar la lista de autorizados, de la que dependen las Historias 1, 2
+> y 3.
+
+**Why this priority**: Sin esta función, la lista de autorizados no tiene forma de poblarse
+y el caso "autorizado permitido" de las Historias 1, 2 y 3 no puede probarse con un sujeto
+real. Es también la única función que escribe sobre el perfil de una cuenta distinta de la
+que la invoca, así que concentra el mayor riesgo de escalada de privilegios de todo el
+repositorio.
+
+**Independent Test**: Se verifica emitiendo un código para un perfil, canjeándolo desde una
+segunda identidad, y comprobando que esa identidad queda en la lista y que su acceso pasa
+de denegado a permitido. Los casos de código vencido, ya canjeado, ajeno y manipulado se
+prueban por separado. No requiere dispositivo.
+
+**Acceptance Scenarios**:
+
+1. **Given** un cliente propietario, **When** solicita un código de vinculación para su
+   propio perfil, **Then** la solicitud se **permite** y se emite un código con vencimiento.
+2. **Given** un cliente autenticado, **When** solicita un código de vinculación para un
+   perfil que no es el suyo, **Then** la solicitud se **deniega**.
+3. **Given** un código vigente emitido para un perfil, **When** una segunda identidad
+   autenticada lo canjea, **Then** la solicitud se **permite** y esa identidad queda en la
+   lista de autorizados de ese perfil.
+4. **Given** la identidad recién agregada, **When** lee una ruta del perfil dentro de su
+   alcance, **Then** la solicitud se **permite**; antes del canje la misma solicitud se
+   denegaba.
+5. **Given** un código ya canjeado, **When** se lo vuelve a canjear, **Then** la solicitud
+   se **rechaza** y la lista de autorizados no cambia.
+6. **Given** un código cuyo vencimiento ya pasó, **When** se lo canjea, **Then** la
+   solicitud se **rechaza**.
+7. **Given** un código manipulado o inventado, **When** se lo canjea, **Then** la solicitud
+   se **rechaza**, con un resultado indistinguible del de un código vencido o ya canjeado.
+8. **Given** un cliente no autenticado, **When** intenta canjear un código válido, **Then**
+   la solicitud se **deniega**.
+9. **Given** un código canjeado o vencido, **When** se recorren los almacenes, **Then** no
+   existe ningún registro del código ni de ningún valor derivado de él.
+10. **Given** una identidad que ya figura en la lista de autorizados, **When** canjea un
+    código nuevo del mismo perfil, **Then** la lista no queda con entradas duplicadas.
+11. **Given** un número de intentos de canje fallidos por encima del límite, **When** se
+    intenta canjear de nuevo, **Then** la solicitud se **rechaza** aunque el código sea
+    válido.
 
 ---
 
@@ -424,6 +551,14 @@ referencia refleja el valor nuevo en una sola lectura.
   escritura. No hay fusión ni aviso de conflicto. Es un comportamiento **aceptado
   deliberadamente**: la autoría y la fecha obligatorias (Historia 2) permiten reconstruir
   qué ocurrió a posteriori.
+- **Código de vinculación canjeado dos veces, vencido o manipulado.** Se **rechaza** en los
+  tres casos, con un resultado indistinguible entre ellos, para no revelar qué códigos
+  existieron. La lista de autorizados no cambia.
+- **Código de vinculación adivinado por fuerza bruta.** Los intentos de canje fallidos están
+  limitados por tasa. Superado el límite, se **rechazan** los intentos siguientes aunque el
+  código presentado sea válido.
+- **Identidad que canjea un código de un perfil en el que ya figura.** La lista de
+  autorizados no queda con entradas duplicadas.
 - **Solicitud sin cuenta registrada.** Ninguna ruta la admite: sin identidad autenticada,
   toda lectura y toda escritura se **deniegan**, en el almacén de documentos y en el de
   archivos, en ambas zonas. El único acceso sin autenticar es ninguno.
@@ -453,6 +588,15 @@ referencia refleja el valor nuevo en una sola lectura.
   su envío igual.
 - **Borrado en cascada interrumpido y reejecutado.** Completa el borrado. Ejecutarlo sobre
   una cuenta ya borrada termina sin error y sin efectos.
+- **Acceso a un perfil marcado como pendiente de eliminación.** Se **deniega**, incluso al
+  propietario y a sus cuentas autorizadas. La marca suspende el perfil desde el instante de
+  la solicitud, sin esperar al vencimiento.
+- **Cancelación de la eliminación dentro de la ventana.** Solo el propietario puede
+  cancelar. Retirada la marca, el acceso vuelve a permitirse y no se perdió ningún dato.
+- **Cuenta pendiente de eliminación que figura como autorizada en otro perfil.** Conserva ese
+  acceso durante la ventana; la referencia se elimina recién al vencer. Es una decisión
+  deliberada: evaluar la suspensión en cada acceso cruzado agregaría una lectura a toda
+  solicitud. El propietario del otro perfil siempre puede revocarla por su cuenta.
 - **Evento de emergencia sobre un perfil sin cuentas autorizadas.** La función termina sin
   emitir envíos y sin error.
 
@@ -599,34 +743,113 @@ observando el resultado del servidor.
 
 #### Borrado en cascada al eliminar una cuenta
 
-- **FR-054**: Al eliminarse una cuenta, el servidor DEBE borrar su documento de perfil y
-  todos sus datos anidados.
-- **FR-055**: El servidor DEBE borrar todos los archivos binarios de la zona por cuenta
-  asociados a esa cuenta.
-- **FR-056**: El servidor DEBE eliminar las referencias a esa cuenta en las listas de
+- **FR-054**: Ante una solicitud de eliminación del cliente propietario, el servidor DEBE
+  marcar el perfil como pendiente de eliminación y encolar una tarea diferida de disparo
+  único con el vencimiento de la ventana de gracia.
+- **FR-055**: Mientras un perfil está marcado como pendiente de eliminación, el servidor
+  DEBE **denegar** toda lectura y toda escritura sobre ese perfil, incluidas las del cliente
+  propietario y las de sus cuentas autorizadas.
+- **FR-056**: El servidor DEBE **permitir** al cliente propietario cancelar la eliminación
+  antes del vencimiento, retirando la marca y dejando la tarea diferida sin efecto, y DEBE
+  **denegar** la cancelación a cualquier otro cliente.
+- **FR-057**: El servidor NO DEBE ejecutar el borrado efectivo mediante un barrido periódico
+  que busque cuentas vencidas: el disparo proviene de la tarea encolada en FR-054. Esta es
+  la única forma de ejecución diferida admitida por FR-072.
+- **FR-058**: Al vencer la ventana de gracia, el servidor DEBE borrar el documento de perfil
+  y todos sus datos anidados.
+- **FR-059**: El servidor DEBE borrar todos los archivos binarios alojados en la zona por
+  cuenta **del perfil eliminado**. Los archivos que esa cuenta escribió en la zona por
+  cuenta de **otro** perfil quedan fuera del borrado: su dueño es el propietario de ese otro
+  perfil (FR-089).
+- **FR-060**: El servidor DEBE eliminar las referencias a esa cuenta en las listas de
   autorizados de otros perfiles, sin alterar esos perfiles en ningún otro aspecto.
-- **FR-057**: Completado el borrado, ninguna ruta asociada a la cuenta DEBE devolver datos.
-- **FR-058**: El borrado DEBE ser reintentable: una ejecución interrumpida y vuelta a
+- **FR-061**: Completado el borrado, ninguna ruta asociada a la cuenta DEBE devolver datos.
+- **FR-062**: El borrado DEBE ser reintentable: una ejecución interrumpida y vuelta a
   disparar completa la operación, y una ejecución sobre una cuenta ya borrada termina sin
   error y sin efectos.
-- **FR-059**: El servidor DEBE **denegar** todo intento de disparar el borrado de una
+- **FR-063**: El servidor DEBE **denegar** todo intento de solicitar la eliminación de una
   cuenta ajena al solicitante.
 
-#### Coherencia de las referencias duplicadas *(condicionada a AMB-007)*
+#### Propagación de los datos duplicados de un pictograma
 
-- **FR-060**: Cuando cambia la etiqueta o la ubicación de un pictograma, el servidor DEBE
+- **FR-064**: Cuando cambia la etiqueta o la ubicación de un pictograma, el servidor DEBE
   actualizar las referencias duplicadas a ese pictograma dentro de las rutinas.
-- **FR-061**: Las referencias duplicadas DEBEN quedar disponibles dentro del paso, de modo
+- **FR-065**: Las referencias duplicadas DEBEN quedar disponibles dentro del paso, de modo
   que leer una rutina no requiera lecturas adicionales por paso.
-- **FR-062**: La propagación DEBE alcanzar las rutinas de todos los perfiles que
-  referencian ese pictograma, sin eludir ni modificar las reglas de acceso de ninguno.
+- **FR-066**: La propagación DEBE alcanzar las rutinas de todos los perfiles que
+  referencian ese pictograma.
+- **FR-067**: La propagación NO DEBE modificar ningún campo fuera de la etiqueta y la
+  ubicación duplicadas dentro de los pasos que referencian el pictograma cambiado. En
+  particular, NO DEBE modificar ninguna lista de autorizados.
+- **FR-068**: La propagación de un pictograma **personalizado** DEBE alcanzar únicamente las
+  rutinas del perfil al que ese pictograma pertenece.
+- **FR-069**: La propagación DEBE determinar qué rutinas referencian el pictograma mediante
+  una consulta con índice, sin recorrer los perfiles que no lo referencian.
+- **FR-070**: El servidor DEBE disponer del índice de consulta que soporta FR-069, de modo
+  que la consulta no se rechace por falta de índice.
+- **FR-071**: La propagación DEBE ser reintentable: una ejecución interrumpida y vuelta a
+  disparar completa la actualización, y una ejecución sobre un estado ya propagado termina
+  sin error y sin efectos adicionales.
 
 #### Disparo por evento
 
-- **FR-063**: Ninguna función DEBE ejecutarse por sondeo periódico.
-- **FR-064**: Ninguna función DEBE permanecer en ejecución: toda función se dispara por un
+- **FR-072**: Ninguna función DEBE ejecutarse por sondeo periódico.
+- **FR-073**: Ninguna función DEBE permanecer en ejecución: toda función se dispara por un
   evento y termina.
-- **FR-065**: Toda función DEBE tener un disparador de evento identificable.
+- **FR-074**: Toda función DEBE tener un disparador de evento identificable.
+
+#### Alta de un acompañante en la lista de autorizados
+
+- **FR-075**: El servidor DEBE **permitir** al cliente propietario obtener un código de
+  vinculación para su propio perfil, y DEBE **denegar** la solicitud a cualquier otro
+  cliente.
+- **FR-076**: El código de vinculación DEBE llevar un vencimiento y DEBE ser verificable
+  por el servidor sin consultar ningún almacén.
+- **FR-077**: El servidor NO DEBE persistir el código de vinculación ni ningún valor
+  derivado de él, en ningún almacén y en ningún momento.
+- **FR-078**: Ante el canje de un código vigente por un cliente autenticado, el servidor
+  DEBE agregar la identidad de ese cliente a la lista de autorizados del perfil que emitió
+  el código.
+- **FR-079**: El servidor DEBE **rechazar** el canje de un código vencido, ya canjeado,
+  manipulado o inexistente, con un resultado indistinguible entre esos casos.
+- **FR-080**: El servidor DEBE **denegar** el canje a las solicitudes no autenticadas.
+- **FR-081**: El servidor NO DEBE producir entradas duplicadas en la lista de autorizados
+  cuando una identidad ya presente canjea un código nuevo del mismo perfil.
+- **FR-082**: El servidor DEBE limitar por tasa los intentos de canje fallidos y
+  **rechazar** los intentos posteriores al límite, aunque el código presentado sea válido.
+- **FR-083**: La función de alta DEBE ser la única vía por la que una identidad distinta de
+  la propietaria llega a la lista de autorizados. Ninguna regla de cliente PUEDE
+  habilitarla.
+
+#### Retención de versiones publicadas
+
+- **FR-084**: El sistema DEBE conservar las 3 versiones publicadas más recientes.
+- **FR-085**: Al confirmarse una versión nueva, el proceso de publicación DEBE eliminar las
+  versiones que quedan fuera de esa ventana, con sus tres artefactos.
+- **FR-086**: El proceso de publicación NO DEBE eliminar la versión designada como vigente,
+  aunque quede fuera de la ventana de retención.
+- **FR-087**: La eliminación de una versión fuera de la ventana DEBE ser la única mutación
+  admitida sobre una ubicación ya publicada. La sobrescritura sigue **rechazada** por
+  FR-034.
+- **FR-088**: El sistema DEBE **rechazar** todo intento de designar como vigente una versión
+  que ya fue eliminada por retención, con el mismo resultado que FR-037.
+
+#### Rastro de una cuenta eliminada en perfiles ajenos
+
+- **FR-089**: El servidor DEBE conservar los archivos binarios que una cuenta eliminada
+  escribió en la zona por cuenta de otro perfil. Su propietario es el titular de ese perfil,
+  y su acceso no cambia por la eliminación.
+- **FR-090**: El servidor DEBE reemplazar, en los registros de autoría de los perfiles
+  ajenos, el identificador de la cuenta eliminada por una marca de cuenta eliminada.
+- **FR-091**: El servidor DEBE conservar en esos registros el nombre visible que la cuenta
+  eliminada tenía al vincularse, y la fecha del cambio.
+- **FR-092**: Al entrar una cuenta en eliminación, el servidor DEBE emitir un aviso a los
+  perfiles en cuya lista de autorizados figuraba, anunciando el cierre del vínculo.
+- **FR-093**: El aviso de FR-092 DEBE ser informativo y NO DEBE condicionar la eliminación:
+  la ausencia de respuesta no impide que el borrado se complete al vencer la ventana de
+  gracia.
+- **FR-094**: El aviso de FR-092 DEBE cumplir la misma restricción de forma que FR-043 y NO
+  DEBE incluir datos sensibles.
 
 ### Non-Functional Requirements
 
@@ -640,7 +863,8 @@ comprueban emitiendo una solicitud.
   revisión de la superficie de rutas definidas.
 
 - **NFR-002** *(Supresión operable)*: El derecho de supresión DEBE ser verificable
-  recorriendo las rutas asociadas después del borrado, no declarado.
+  recorriendo las rutas asociadas después del borrado, no declarado. El acceso cesa en el
+  instante de la solicitud; el borrado se completa al vencer la ventana de gracia.
   **Verificación:** prueba de función, recorriendo exhaustivamente las rutas.
 
 - **NFR-003** *(El servidor no es requisito de funcionamiento)*: NO DEBE existir ninguna
@@ -664,7 +888,7 @@ comprueban emitiendo una solicitud.
   **Verificación:** cobertura de las pruebas de reglas.
 
 - **NFR-007** *(Superficie mínima)*: Toda capacidad de servidor DEBE justificar por qué no
-  puede resolverse en el cliente. Las capacidades comprometidas son tres; cualquier otra
+  puede resolverse en el cliente. Las capacidades comprometidas son cinco; cualquier otra
   queda marcada como ambigüedad hasta que se decida.
   **Verificación:** revisión de diseño al proponer cada capacidad.
 
@@ -678,7 +902,11 @@ comprueban emitiendo una solicitud.
 - **Documento de perfil**: Raíz de todos los datos de una persona usuaria. Contiene la
   lista de autorizados. Su identificador determina quién es el propietario.
 - **Lista de autorizados**: Conjunto de identidades con acceso al perfil. Solo el
-  propietario la modifica. Retirar una identidad revoca su acceso.
+  propietario la modifica directamente; el alta de una identidad ajena ocurre únicamente a
+  través de la función de alta. Retirar una identidad revoca su acceso.
+- **Código de vinculación**: Valor emitido a pedido del propietario, con vencimiento,
+  verificable por el servidor sin consultar ningún almacén. No se persiste. Su canje es la
+  única vía por la que una identidad ajena llega a la lista de autorizados.
 - **Rutina**: Dato anidado del perfil. Toda escritura declara la identidad de quien la
   realiza y la fecha del servidor. Sus pasos duplican la etiqueta y la ubicación del
   pictograma que referencian.
@@ -742,56 +970,55 @@ comprueban emitiendo una solicitud.
   efectos.
 - **SC-020**: Se ejecutan 0 funciones por sondeo periódico y 0 funciones permanecen en
   ejecución.
+- **SC-021**: Se aceptan 0 canjes de códigos vencidos, ya canjeados, manipulados o
+  inexistentes, y 0 canjes desde solicitudes no autenticadas.
+- **SC-022**: Canjeado un código, se recuperan 0 registros del código o de cualquier valor
+  derivado de él de cualquier almacén.
+- **SC-023**: 0 identidades ajenas llegan a una lista de autorizados por una vía distinta de
+  la función de alta.
+- **SC-024**: Propagado un cambio de pictograma, 0 campos fuera de la etiqueta y la
+  ubicación duplicadas resultan modificados en los perfiles afectados, y 0 listas de
+  autorizados cambian.
+- **SC-025**: La propagación de un pictograma personalizado alcanza 0 perfiles distintos de
+  aquel al que pertenece.
+- **SC-026**: Reejecutar la propagación sobre un estado ya propagado produce 0 errores y 0
+  efectos adicionales.
+- **SC-027**: Un perfil marcado como pendiente de eliminación admite 0 operaciones exitosas,
+  incluidas las de su propietario y las de sus cuentas autorizadas.
+- **SC-028**: Cancelada la eliminación dentro de la ventana, el acceso del propietario vuelve
+  a permitirse en el 100 % de las rutas que tenía antes de solicitarla, y 0 datos se
+  perdieron.
+- **SC-029**: El borrado efectivo se dispara en el 100 % de los casos desde la tarea encolada
+  en el momento de la solicitud, y desde 0 barridos periódicos.
+- **SC-030**: Vencida la ventana y completado el borrado, 0 rutas asociadas a la cuenta
+  devuelven datos.
+- **SC-031**: Tras confirmar una versión nueva, quedan exactamente 3 versiones disponibles,
+  más la vigente si esta cayera fuera de esa ventana.
+- **SC-032**: Se aceptan 0 designaciones de versión vigente sobre versiones eliminadas por
+  retención, y se producen 0 eliminaciones de la versión vigente.
+- **SC-033**: Completado el borrado de una cuenta, 0 archivos que esa cuenta escribió en
+  perfiles ajenos resultan eliminados, y 0 identificadores de esa cuenta permanecen en los
+  registros de autoría de esos perfiles.
+- **SC-034**: 0 eliminaciones de cuenta quedan bloqueadas por la falta de respuesta de un
+  tercero.
 
 ---
 
 ## Ambigüedades abiertas
 
 Registradas para decidirse explícitamente en `/speckit-clarify`, no por omisión durante la
-implementación. **AMB-001** y **AMB-007** son contradicciones detectadas por esta
-especificación entre sus propios requisitos y la superficie comprometida de tres funciones;
-se marcan en lugar de resolverse.
+implementación.
 
-- **AMB-001 — Validación del código de vinculación de un acompañante.** *(Bloqueante —
-  contradicción con la superficie comprometida)*
-  El modelo de datos supone que el código de vinculación se valida del lado del servidor:
-  un código generado por un cliente y canjeado por otro no puede validarse solo con reglas
-  de acceso, porque el canjeante todavía no figura en ninguna lista de autorizados y por lo
-  tanto no puede leer ni escribir nada del perfil de destino. Pero esta capacidad **no**
-  está entre las tres funciones comprometidas.
-  **Hay que decidir**: si se incorpora una cuarta función con su justificación explícita de
-  por qué no puede resolverse en el cliente, o si la vinculación se resuelve por otro
-  mecanismo que no requiera código de servidor. **Mientras no se resuelva, la lista de
-  autorizados solo puede poblarse por un medio no especificado.**
+**Resueltas.** Sus decisiones están registradas en `## Clarifications`. Los identificadores
+no se reutilizan.
 
-- **AMB-007 — Propagación de las referencias duplicadas a un pictograma.** *(Bloqueante —
-  contradicción con la superficie comprometida)*
-  La Historia 9 y los requisitos FR-060 a FR-062 exigen que un cambio en un pictograma
-  actualice las copias dentro de las rutinas de todos los perfiles afectados. Eso es una
-  escritura desencadenada por otra escritura, sobre documentos de perfiles ajenos al que la
-  originó: no puede hacerlo un cliente, porque no tiene acceso a esos perfiles. Es, por lo
-  tanto, una capacidad de servidor que **no** está entre las tres comprometidas.
-  **Hay que decidir**: si se incorpora como cuarta o quinta función con su justificación, si
-  el cliente resuelve la etiqueta con una lectura adicional —renunciando al motivo por el
-  que se duplicó—, o si las etiquetas de pictograma se consideran inmutables una vez
-  publicadas. **La Historia 9 no debe planificarse hasta que esto se decida.**
-
-- **AMB-002 — Destino de las versiones de vocabulario anteriores.** *(Bloqueante)*
-  Al confirmar una versión nueva, falta decidir si las versiones anteriores se conservan y
-  por cuánto tiempo, o se eliminan. Afecta directamente a FR-039 y SC-014: no se puede
-  revertir a una versión cuyos artefactos se borraron.
-
-- **AMB-003 — Inmediatez de la eliminación de cuenta.** *(Bloqueante)*
-  Falta decidir si el borrado en cascada es inmediato o tiene un período de gracia con
-  posibilidad de recuperación. Afecta a qué significa "completado" en FR-057 y SC-018, y al
-  cumplimiento del derecho de supresión.
-
-- **AMB-004 — Perfiles vinculados cuando se elimina una cuenta acompañante.** *(No
-  bloqueante)*
-  FR-056 cubre la eliminación de la referencia en las listas de autorizados. Falta decidir
-  qué ocurre con los archivos binarios que esa cuenta escribió en la zona por cuenta de otro
-  perfil: si permanecen —el perfil de destino sigue siendo su dueño— o se borran con la
-  cuenta que los creó.
+| # | Decisión | Aplicada en |
+|---|---|---|
+| AMB-001 | Alta de acompañante por cuarta función | Historia 10, FR-075 a FR-083, SC-021 a SC-023 |
+| AMB-007 | Propagación de pictograma por quinta función | Historia 9, FR-064 a FR-071, SC-024 a SC-026 |
+| AMB-003 | Eliminación con ventana de gracia y tarea diferida | Historia 7, FR-054 a FR-063, SC-027 a SC-030 |
+| AMB-002 | Retención de las 3 versiones publicadas más recientes | Historia 6, FR-084 a FR-088, SC-031 y SC-032 |
+| AMB-004 | Los archivos permanecen; la autoría se despersonaliza | Historia 7, FR-089 a FR-094, SC-033 y SC-034 |
 
 - **AMB-005 — Umbral de volumen de la evaluación de autorización.** *(No bloqueante)*
   Evaluar si un solicitante figura en la lista de autorizados puede requerir una lectura
@@ -825,13 +1052,25 @@ Supuestos adoptados donde la descripción no fijaba un valor. Cada uno es revisa
 - **El proceso de publicación opera con credenciales de administración** y por lo tanto no
   está sujeto a las reglas de cliente. Su comportamiento se verifica con pruebas propias,
   separadas de las pruebas de reglas, y nunca mezclando ambas credenciales en un mismo test.
+- **Conservar el nombre visible de una cuenta eliminada es una tensión asumida.** FR-091 lo
+  mantiene en los registros de autoría de perfiles ajenos para que la persona usuaria pueda
+  entender quién cambió qué. Es un dato personal de alguien que pidió ser borrado, así que
+  la decisión es revisable: si se prefiere privilegiar la supresión, se elimina FR-091 y
+  queda solo la marca de FR-090.
+- **La ventana de gracia de la eliminación dura 30 días.** La duración no fue fijada por la
+  decisión que la introdujo; 30 días es la práctica habitual para eliminación de cuenta.
+  Se adopta como valor por defecto revisable: cambiarlo no altera ningún requisito, solo el
+  vencimiento con que se encola la tarea de FR-054.
+- **La ejecución diferida es de disparo único y se encola en el momento de la solicitud.** No
+  es un trabajo programado que barra cuentas vencidas, lo que violaría FR-072. Es la única
+  forma de ejecución diferida que la especificación admite.
 - **"Indivisible" se define por el resultado observable** (FR-033): tras una interrupción, o
   la versión figura disponible con sus tres artefactos, o no figura. No se supone ninguna
   garantía transaccional del almacén subyacente.
 - **La depuración de identificadores de dispositivo ocurre dentro de las funciones de aviso
   ya comprometidas**, como efecto de un fallo de emisión. No constituye una capacidad
   adicional ni requiere un disparador propio, lo que la haría un sondeo prohibido por
-  FR-063.
+  FR-072.
 - **El conflicto entre dos escrituras concurrentes se resuelve por última escritura, sin
   fusión ni aviso.** Es una decisión aceptada, no una omisión: la autoría y la fecha
   obligatorias permiten reconstruir qué ocurrió.
