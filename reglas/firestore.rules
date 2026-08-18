@@ -1,0 +1,112 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function autenticada() {
+      return request.auth != null;
+    }
+
+    function propietaria(uid) {
+      return autenticada() && request.auth.uid == uid;
+    }
+
+    function perfilAutorizado(uid) {
+      return autenticada()
+        && (
+          request.auth.uid == uid
+          || request.auth.uid in get(/databases/$(database)/documents/usuarios/$(uid)).data.uids_autorizados
+        )
+        && !exists(/databases/$(database)/documents/eliminaciones_pendientes/$(uid));
+    }
+
+    function listaAutorizadosValida(data) {
+      return data.uids_autorizados is list
+        && data.uids_autorizados.toSet().size() == data.uids_autorizados.size();
+    }
+
+    function soloRetiraAutorizados(uid) {
+      return propietaria(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uids_autorizados'])
+        && listaAutorizadosValida(request.resource.data)
+        && resource.data.uids_autorizados.hasAll(request.resource.data.uids_autorizados);
+    }
+
+    function actualizacionPerfilSinAutorizados() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['uids_autorizados']);
+    }
+
+    function rutinaValida() {
+      return request.resource.data.keys().hasAll(['actualizada_por', 'fecha_actualizacion'])
+        && request.resource.data.actualizada_por == request.auth.uid
+        && request.resource.data.fecha_actualizacion is timestamp
+        && request.resource.data.fecha_actualizacion == request.time;
+    }
+
+    function resumenValido() {
+      return !request.resource.data.keys().hasAny(['glosa', 'texto', 'transcripcion'])
+        && request.resource.data.keys().hasAll(['fecha_actualizacion'])
+        && request.resource.data.fecha_actualizacion is timestamp;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /usuarios/{uid} {
+      allow get: if perfilAutorizado(uid);
+      allow list: if false;
+      allow create: if propietaria(uid)
+        && listaAutorizadosValida(request.resource.data);
+      allow update: if perfilAutorizado(uid)
+        && actualizacionPerfilSinAutorizados();
+      allow update: if soloRetiraAutorizados(uid);
+      allow delete: if false;
+    }
+
+    match /usuarios/{uid}/rutinas/{rutinaId} {
+      allow read: if perfilAutorizado(uid);
+      allow create, update: if perfilAutorizado(uid) && rutinaValida();
+      allow delete: if perfilAutorizado(uid);
+    }
+
+    match /usuarios/{uid}/dispositivos/{dispositivoId} {
+      allow read, write: if perfilAutorizado(uid);
+    }
+
+    match /usuarios/{uid}/pictogramas/{pictogramaId} {
+      allow read, write: if perfilAutorizado(uid);
+    }
+
+    match /usuarios/{uid}/resumenes/{fecha} {
+      allow read: if perfilAutorizado(uid);
+      allow create, update: if propietaria(uid) && resumenValido();
+      allow delete: if propietaria(uid);
+    }
+
+    match /eliminaciones_pendientes/{uid} {
+      allow get: if propietaria(uid);
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    match /vocabularios/{version}/senas/{senaId} {
+      allow read: if autenticada();
+      allow write: if false;
+    }
+
+    match /modelos/{version} {
+      allow read: if autenticada();
+      allow write: if false;
+    }
+
+    match /config/modelo_activo {
+      allow read: if autenticada();
+      allow write: if false;
+    }
+
+    match /pictogramas/{pictogramaId} {
+      allow read: if autenticada();
+      allow write: if false;
+    }
+  }
+}

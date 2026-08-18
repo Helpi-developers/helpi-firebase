@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function autenticada() {
+      return request.auth != null;
+    }
+
+    function perfilAutorizado(uid) {
+      return autenticada()
+        && (
+          request.auth.uid == uid
+          || request.auth.uid in firestore.get(/databases/(default)/documents/usuarios/$(uid)).data.uids_autorizados
+        );
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    match /modelos/{version}/{allPaths=**} {
+      allow read: if autenticada();
+      allow write: if false;
+    }
+
+    match /pictogramas/{allPaths=**} {
+      allow read: if autenticada();
+      allow write: if false;
+    }
+
+    match /usuarios/{uid}/pictogramas/{allPaths=**} {
+      allow read, write: if perfilAutorizado(uid);
+    }
+
+    match /usuarios/{uid}/audios/{allPaths=**} {
+      allow read, write: if perfilAutorizado(uid);
+    }
+  }
+}
+

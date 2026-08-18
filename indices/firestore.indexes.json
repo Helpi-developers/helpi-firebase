@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "rutinas",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "pictogramas_referenciados", "arrayConfig": "CONTAINS" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
+
