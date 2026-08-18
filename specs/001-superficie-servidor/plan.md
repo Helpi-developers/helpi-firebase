@@ -47,25 +47,25 @@ pública
 
 **Performance Goals**: No hay objetivo de latencia declarado en la especificación. La
 restricción real es de **volumen**: NFR-005 prohíbe rutas de escritura de alta frecuencia y
-FR-104 limita el agregado a una escritura por perfil y por día
+FR-105 limita el resumen a un documento por perfil y por día
 
 **Constraints**: Toda regla se verifica contra el emulador sin intervención humana
 (criterio maestro de la spec). Toda función se dispara por evento y termina (FR-074 a
 FR-076). El despliegue a producción ocurre solo desde integración continua
 
-**Scale/Scope**: 109 requisitos funcionales, 8 no funcionales, 39 criterios de éxito, 10
+**Scale/Scope**: 110 requisitos funcionales, 8 no funcionales, 39 criterios de éxito, 10
 historias. 5 funciones, 2 archivos de reglas, 1 índice explícito, 1 script de publicación
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-Verificación contra `.specify/memory/constitution.md` v1.0.0.
+Verificación contra `.specify/memory/constitution.md` v1.1.0.
 
 | Principio | Estado | Cómo lo satisface el plan |
 |---|---|---|
 | I. La especificación manda | ✅ | Cada artefacto de este plan declara los FR que lo originan. Ningún componente sin traza |
-| II. Ejecución local primero | ⚠️ **Violación documentada** | La constitución compromete **tres** funciones; la spec aprobada llegó a **cinco**. Ver Complexity Tracking |
+| II. Ejecución local primero | ✅ | La enmienda v1.1.0 llevó la superficie comprometida a **cinco funciones**, con su justificación por función |
 | III. Funciones como pegamento liviano | ✅ | Ninguna función contiene lógica de dominio. Las cinco son movimiento de datos y envío. Sin sondeo |
 | IV. Privacidad como restricción dura | ⚠️ **Tensión abierta** | Sin rutas para video, keypoints, glosas ni credenciales. Pero FR-093 conserva el nombre visible de una cuenta eliminada. Ver Complexity Tracking |
 | V. La regla de tutor | ✅ | `uids_autorizados` evaluado sobre el documento padre es el único mecanismo. Cuatro pruebas por regla |
@@ -74,16 +74,15 @@ Verificación contra `.specify/memory/constitution.md` v1.0.0.
 | VIII. Publicación atómica | ✅ | El script valida antes de publicar y usa el documento de versión como punto de compromiso |
 | IX. Dos zonas de Storage | ✅ | Definidas en `contracts/reglas-matriz.md`, sin solapamiento ni hueco |
 | X. Colecciones globales de solo lectura | ✅ | Escritura únicamente con credenciales de administración |
-| XI. El tutor no alcanza la traducción | ✅ | `resumenes/{fecha}` queda fuera del alcance autorizado |
+| XI. El tutor no alcanza la traducción | ✅ | El ámbito de traducción no existe en el servidor. `resumenes/{fecha}` es cumplimiento de rutinas, no traducción |
 | XII. Pruebas contra el emulador | ✅ | Sin reglas permisivas, credenciales de test explícitas, sin mezclar administración y usuario |
 | XIII. Manejo de errores explícito | ✅ | Registrar y relanzar. Cloud Logging y Error Reporting. Sin Sentry |
 | XIV. Despliegue solo desde CI | ✅ | Flujo de despliegue manual disparado desde CI |
 | XV. Sin propagación instantánea | ✅ | Ninguna regla depende del orden de llegada de dos escrituras |
 | XVI. Sin código en fase de planificación | ✅ | Este comando genera solo documentos |
 
-**Resultado del gate**: pasa con **dos violaciones documentadas** en Complexity Tracking.
-Ninguna es silenciosa: ambas provienen de decisiones explícitas registradas en
-`spec.md § Clarifications`.
+**Resultado del gate**: pasa con **una tensión documentada** en Complexity Tracking. La
+violación del Principio II se cerró con la enmienda de la constitución a v1.1.0.
 
 ## Project Structure
 
@@ -115,13 +114,13 @@ functions/
 │   ├── aviso-emergencia/             # Función 1 — FR-042 a FR-049
 │   ├── novedades-tema/               # Función 2 — FR-050 a FR-053
 │   ├── borrado-cascada/              # Función 3 — FR-054 a FR-065, FR-091 a FR-099
-│   ├── alta-acompanante/             # Función 4 — FR-077 a FR-085, FR-105
+│   ├── alta-acompanante/             # Función 4 — FR-077 a FR-085, FR-106
 │   ├── propagacion-pictograma/       # Función 5 — FR-066 a FR-073
 │   └── comun/
 │       ├── tipos.ts                  # Formas de documento (contracts/documentos.md)
 │       ├── errores.ts                # Registrar y relanzar — Principio XIII
 │       ├── envio.ts                  # Construcción de mensajes de datos + depuración de destinos
-│       └── vencimientos.ts           # Instantes absolutos — FR-106 a FR-109
+│       └── vencimientos.ts           # Instantes absolutos — FR-107 a FR-110
 ├── test/
 │   └── integracion/                  # Una prueba por función contra el emulador
 ├── package.json
@@ -176,9 +175,9 @@ existir.
 | `functions/src/aviso-emergencia/` | FR-042 a FR-049 | 4 |
 | `functions/src/novedades-tema/` | FR-050 a FR-053 | 8 |
 | `functions/src/borrado-cascada/` | FR-054 a FR-065, FR-091 a FR-096 | 7 |
-| `functions/src/alta-acompanante/` | FR-077 a FR-085, FR-105 | 10 |
+| `functions/src/alta-acompanante/` | FR-077 a FR-085, FR-106 | 10 |
 | `functions/src/propagacion-pictograma/` | FR-066 a FR-073 | 9 |
-| `functions/src/comun/vencimientos.ts` | FR-106 a FR-109 | 7, 10 |
+| `functions/src/comun/vencimientos.ts` | FR-107 a FR-110 | 7, 10 |
 | `scripts/publicar-modelo/` | FR-032 a FR-041, FR-086 a FR-090 | 6 |
 | `.github/workflows/` | NFR-006, Principios XII y XIV | — |
 
@@ -201,7 +200,7 @@ gobierna el código.
    apropiado en las funciones llamables. Sin datos personales identificables en los
    registros (FR-049).
 5. **Todo vencimiento viaja como instante absoluto en el dato que vence.** Ninguna función
-   ni regla calcula una duración en el momento de la comprobación (FR-106 a FR-109). Es lo
+   ni regla calcula una duración en el momento de la comprobación (FR-107 a FR-110). Es lo
    que hace que una prueba pueda sembrar el estado vencido.
 6. **El disparo diferido del borrado es una tarea encolada de disparo único**, nunca un
    barrido periódico (FR-058). Ver R-005 para la elección del mecanismo y su comprobación
@@ -213,7 +212,6 @@ gobierna el código.
 
 | Violación | Por qué es necesaria | Alternativa más simple, y por qué se rechazó |
 |---|---|---|
-| **Cinco funciones en lugar de las tres comprometidas** (Principio II) | Las funciones 4 y 5 son escrituras sobre perfiles ajenos al que las origina. Ningún cliente puede hacerlas: quien canjea un código todavía no figura en ninguna lista de autorizados, y quien renombra un pictograma no tiene acceso a las rutinas de otros perfiles | Función 4: que la persona usuaria agregue el identificador del acompañante a mano. Rechazada en `spec.md § Clarifications` por inviable fuera de un encuentro presencial. Función 5: que el cliente resuelva la etiqueta contra el catálogo que ya sincroniza. Recomendada durante la clarificación y **rechazada explícitamente** por quien decide, que optó por conservar la duplicación |
 | **FR-093 conserva el nombre visible de una cuenta eliminada** (Principio IV) | Permite a la persona usuaria entender quién modificó sus rutinas después de que ese acompañante cerró su cuenta | Guardar solo la marca de cuenta eliminada de FR-092. Está registrada como revisable en `spec.md § Assumptions`; no se resolvió porque la decisión fue conservar el nombre. **Requiere confirmación de un revisor antes de implementar** |
 
 Ambas violaciones nacen de decisiones explícitas y registradas, no de deriva de diseño.

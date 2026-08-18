@@ -80,7 +80,8 @@ en un refactor:
 | Escenario | Resultado esperado | Requisitos |
 |---|---|---|
 | `autorizada` lee `usuarios/propietaria/rutinas/*` | permitido | FR-003 |
-| `autorizada` lee `usuarios/propietaria/resumenes/*` | **denegado** — única asimetría del perfil | FR-103 |
+| `autorizada` lee `usuarios/propietaria/resumenes/*` | **permitido** — consultar el cumplimiento es su razón de ser | FR-103 |
+| `autorizada` **escribe** `usuarios/propietaria/resumenes/*` | denegado | FR-104 |
 | `ajena` lee cualquier ruta del perfil | denegado, sin revelar si existe | FR-004, FR-006 |
 | sin identidad, cualquier ruta | denegado | FR-005 |
 | `autorizada` agrega una identidad a `uids_autorizados` | denegado | FR-085 |
@@ -88,7 +89,7 @@ en un refactor:
 | escritura de rutina sin `actualizada_por` | rechazada | FR-014 |
 | escritura de rutina con autoría ajena a la identidad autenticada | rechazada | FR-016 |
 | escritura de resumen con una glosa adentro | rechazada | FR-101 |
-| segundo resumen para el mismo día | rechazada | FR-104 |
+| segundo resumen para el mismo día | rechazada — el id del documento es la fecha | FR-105 |
 | escritura en una ruta de Storage inventada | denegada — la ruta no existe | FR-031 |
 
 ---
@@ -96,8 +97,8 @@ en un refactor:
 ## 5. Verificar la ventana de gracia sin esperar 30 días
 
 Es el caso que hace operativo el criterio maestro. **No hace falta reloj inyectable ni
-acortar la ventana por configuración**: el vencimiento es un instante absoluto (FR-106 a
-FR-109), así que se siembra ya pasado.
+acortar la ventana por configuración**: el vencimiento es un instante absoluto (FR-107 a
+FR-110), así que se siembra ya pasado.
 
 1. Sembrar `eliminaciones_pendientes/propietaria` con `vence_en` **en el futuro**.
    - `propietaria` lee cualquier ruta de su perfil → **denegado** (FR-056)
@@ -128,12 +129,12 @@ Al menos una prueba de integración por función, contra el emulador.
 
 | Función | Qué se afirma | Requisitos |
 |---|---|---|
-| 1 · Aviso de emergencia | Se emite un envío por destino de cada cuenta autorizada; **el mensaje no tiene clave `notification`**; el contenido no lleva datos sensibles; **tras procesar, ningún almacén tiene registro del evento** | FR-042 a FR-049 |
+| 1 · Aviso de emergencia | Se emite un envío por dispositivo de tipo acompañante registrado **bajo el propio perfil**; **el mensaje no tiene clave `notification`**; el contenido no lleva datos sensibles; **tras procesar, ningún almacén tiene registro del evento** | FR-042 a FR-049 |
 | 1 · destino inválido | El destino se elimina del perfil y los demás reciben su envío igual | FR-046, FR-047 |
 | 2 · Novedad por tema | Se emite al tema; el mensaje anuncia disponibilidad y no transporta el contenido; sin clave `notification` | FR-050 a FR-053 |
 | 3 · Borrado en cascada | Ver § 5 | FR-054 a FR-065 |
 | 4 · Alta de acompañante | Un código vigente agrega la identidad; el acceso pasa de denegado a permitido | FR-077 a FR-080 |
-| 4 · rechazos | Código vencido, ya canjeado, manipulado e inexistente devuelven **el mismo código y el mismo cuerpo**; el rechazo por límite de tasa también | FR-081, FR-105 |
+| 4 · rechazos | Código vencido, ya canjeado, manipulado e inexistente devuelven **el mismo código y el mismo cuerpo**; el rechazo por límite de tasa también | FR-081, FR-106 |
 | 4 · límite de tasa | Al sexto intento fallido en una hora se rechaza aunque el código sea válido, en cualquiera de los dos ejes de conteo | FR-084 |
 | 5 · Propagación | Las rutinas de dos perfiles distintos reflejan la etiqueta nueva; **ningún otro campo cambió**; ninguna lista de autorizados cambió; reejecutar no produce efectos | FR-066 a FR-073 |
 

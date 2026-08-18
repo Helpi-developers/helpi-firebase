@@ -13,13 +13,13 @@ propia rompería la otra punta.
 
 **Decisión**: se implementan las cinco funciones que la especificación aprobada compromete.
 
-**Fundamento**: el Principio II exige justificación explícita por función. La justificación
-común es que **las cinco escriben sobre datos a los que el cliente que las origina no tiene
-acceso**, o requieren credenciales de envío que un cliente no puede tener.
+**Fundamento**: el Principio II exige justificación explícita por función. Cuatro de las
+cinco **escriben sobre datos a los que el cliente que las origina no tiene acceso**; la
+primera requiere credenciales de envío que ningún cliente puede tener.
 
 | # | Función | Por qué el cliente no puede | Requisitos |
 |---|---|---|---|
-| 1 | Aviso a contactos de confianza | Debe leer `usuarios/{otro}/dispositivos` de las cuentas autorizadas y enviar por FCM. FR-004 le deniega leer perfiles ajenos, y el envío exige credenciales de servidor | FR-042 a FR-049 |
+| 1 | Aviso de emergencia por aviso remoto | El envío por FCM exige credenciales de servidor que ningún cliente puede tener. **Corregido**: no lee perfiles ajenos, porque los dispositivos de acompañante cuelgan del propio perfil (D-002) | FR-042 a FR-049 |
 | 2 | Publicación de novedades por temas | El envío a un tema exige credenciales de servidor. No hay forma de que un cliente publique a un tema sin poder publicar a cualquiera | FR-050 a FR-053 |
 | 3 | Borrado en cascada | Debe eliminar la referencia a la cuenta en `uids_autorizados` de **otros** perfiles (FR-061) y recorrer subcolecciones y Storage. FR-004 le deniega tocar esos perfiles | FR-054 a FR-065 |
 | 4 | Alta de acompañante | Escribe en un perfil sobre el que quien canjea el código **todavía no tiene ningún acceso**. Es la definición del problema: si el cliente pudiera hacerlo, la regla de tutor no separaría nada | FR-077 a FR-085 |
@@ -173,7 +173,7 @@ el instante de vencimiento como dato.
 Una tarea encolada se dispara por evento —el vencimiento de su propia programación— y
 termina, que es lo que el Principio III admite.
 
-**Cómo se comprueba en el emulador**: FR-106 a FR-109 resuelven el problema sin ningún
+**Cómo se comprueba en el emulador**: FR-108 a FR-110 resuelven el problema sin ningún
 mecanismo de control del tiempo. La marca de pendiente lleva su instante de vencimiento, así
 que una prueba siembra el estado con un instante ya pasado e invoca el manejador
 directamente. **No hace falta un reloj inyectable ni acortar la ventana por configuración.**
@@ -237,67 +237,122 @@ emulador. Se registra acá; la decisión corresponde a `/speckit-tasks`.
 
 ## Divergencias respecto del modelo de datos compartido
 
-**No se resuelven en este plan.** El modelo es la referencia común con `helpi-android`.
-Cada divergencia necesita acuerdo entre ambos repositorios antes de implementarse.
+Contrastadas contra `Documentacion/modelo_datos_firebase_helpi.md`. **No se resuelven acá.**
+El modelo es la referencia común con `helpi-android` y cada divergencia necesita acuerdo
+entre ambos repositorios.
 
-### D-001 — Falta el arreglo de pictogramas referenciados en la rutina
+> **Corrección del 2026-08-18.** La primera versión de esta sección declaró dos divergencias
+> que no existen y omitió cinco que sí. Se rehízo contra el documento real.
 
-La especificación exige localizar por consulta las rutinas que referencian un pictograma
-(FR-071) y el modelo compartido embebe los pasos dentro de la rutina, forma sobre la que esa
-consulta no existe. **Hace falta un arreglo plano a nivel del documento de rutina.** Como el
-cliente es quien escribe las rutinas, es el cliente quien debe mantenerlo, lo que convierte
-esto en un cambio de contrato entre repositorios, no en una decisión de este.
+### D-001 — Falta el arreglo de pictogramas referenciados en la rutina *(confirmada, y más grave de lo previsto)*
 
-### D-002 — Falta la fecha de modificación de la rutina
+El modelo embebe `pasos` dentro de `actividades`, y `actividades` dentro de la rutina: el
+identificador de pictograma queda **doblemente anidado** en
+`actividades[].pasos[].id_pictograma`. Firestore no permite filtrar por un campo dentro de un
+arreglo de mapas, así que **no existe consulta** que devuelva las rutinas que referencian un
+pictograma.
 
-FR-015 y FR-017 exigen que toda escritura sobre una rutina declare la fecha y que sea la
-fecha del servidor. El modelo compartido lista `actualizada_por` y `deleted_at`, pero
-**ningún campo de fecha de actualización**. FR-024 sugiere el nombre `fecha_actualizacion`,
-que el modelo usa en las entradas de catálogo. Hace falta acordar si la rutina lleva ese
-mismo nombre.
+El propio modelo, en su sección *Consecuencia de desnormalizar*, resuelve el problema con una
+función disparada por la escritura del pictograma, pero **no advierte que primero hay que
+poder encontrar las rutinas afectadas**. Sin un arreglo plano al nivel del documento de
+rutina, FR-069 obliga a recorrer todas las rutinas de todos los perfiles, que es justo lo que
+prohíbe.
 
-### D-003 — Falta la marca de pendiente de eliminación
+**Hace falta**: `pictogramas_referenciados: string[]` en el documento de rutina, mantenido
+por el cliente, que es quien escribe las rutinas.
+
+### D-002 — Los dispositivos del acompañante cuelgan del perfil de la persona usuaria
+
+El modelo define `usuarios/{id}/dispositivos/{id}` con `tipo: USUARIO | TUTOR`: **el token
+del acompañante vive bajo el perfil de la persona usuaria**, no bajo el suyo propio.
+
+El plan y los contratos asumían lo contrario y hacían que la función de emergencia leyera
+`usuarios/{autorizado}/dispositivos/*`. Es una ruta que el modelo no usa, y su corrección
+**simplifica la función**: deja de haber lectura cruzada de perfiles.
+
+**Consecuencia sobre R-001**: la justificación de la función 1 frente al Principio II ya no
+puede apoyarse en que lee perfiles ajenos. La razón que queda en pie, y alcanza, es que el
+envío exige credenciales de servidor que ningún cliente puede tener.
+
+### D-003 — El vínculo tiene dos representaciones y la especificación solo modela una
+
+El modelo guarda el vínculo dos veces: el arreglo embebido `tutores[]` —con `uid`, `nombre`,
+`parentesco`, `telefono`, `email`, `estado: ACTIVO | INACTIVO`— y el arreglo plano
+`uids_autorizados[]` que evalúan las reglas.
+
+La especificación solo modela el segundo. Quedan sin definir:
+
+- si la función de alta escribe **ambos** arreglos,
+- si revocar quita de `uids_autorizados`, pone `estado: INACTIVO` en `tutores[]`, o las dos
+  cosas,
+- qué pasa si los dos arreglos se desincronizan.
+
+**Efecto colateral favorable**: el "nombre visible de la cuenta al vincularse" que exige
+FR-093 **ya existe** en `tutores[].nombre`. La primera versión de este documento lo declaró
+faltante, y era falso.
+
+### D-004 — Falta la marca de pendiente de eliminación
 
 FR-054 a FR-057 y FR-097 a FR-099 exigen marcar el perfil como pendiente, con su instante de
-vencimiento, y exponer un indicador de estado legible solo por el propietario. **El modelo
-compartido no tiene ningún campo para eso.** Además, ese indicador debe ser legible mientras
-el resto del perfil está denegado, lo que sugiere que no puede vivir dentro de
-`usuarios/{uid}`: una regla no puede permitir leer un campo y denegar los demás del mismo
-documento. Ver el análisis en [data-model.md](./data-model.md).
+vencimiento, y exponer un indicador legible solo por la propietaria. **El modelo no tiene
+nada de eso**: en su sección *Pendientes* menciona el borrado en cascada, pero no contempla
+ninguna ventana de gracia.
 
-### D-004 — El borrado lógico de rutinas no interactúa con nada de la especificación
+La colección `eliminaciones_pendientes/{uid}` que propone `data-model.md` es una **adición
+completa** al modelo compartido, y `helpi-android` necesita conocerla para mostrar el estado.
 
-El modelo compartido tiene `deleted_at` en las rutinas, es decir, borrado lógico. **La
-especificación no lo menciona ni una vez.** Quedan sin definir al menos dos cosas: si la
-propagación de pictogramas alcanza a las rutinas borradas lógicamente, y si el borrado en
-cascada de FR-059 elimina físicamente las que ya estaban borradas lógicamente. La primera
-además decide si hace falta un índice compuesto (R-003).
+### D-005 — El borrado lógico no interactúa con nada de la especificación
 
-### D-005 — Falta el nombre visible de la cuenta al vincularse
+El modelo aplica `deleted_at` en **tres niveles**: rutina, actividad y paso. La
+especificación no lo menciona ni una vez. Quedan sin definir:
 
-FR-093 exige conservar el nombre visible que la cuenta eliminada tenía al vincularse. El
-modelo compartido no lo lista en ninguna parte, y `uids_autorizados` es un arreglo de
-identificadores, no de objetos. Conservar un nombre exige otra forma. Se agrava porque
-FR-093 ya está marcado como tensión abierta con el Principio IV.
+- si la propagación de pictogramas alcanza a los pasos borrados lógicamente,
+- si el borrado en cascada de FR-059 elimina físicamente lo ya borrado lógicamente.
 
-### D-006 — `deleted_at` rompe la convención de nombres en español
+La primera pregunta además decide si hace falta un índice compuesto (R-003).
 
-La constitución fija nombres de dominio en español y campos en `snake_case`. `deleted_at`
-cumple lo segundo y no lo primero, a diferencia de `uids_autorizados`, `actualizada_por` y
-`fecha_actualizacion`. Se registra por consistencia; corregirlo es un cambio en el modelo
-compartido, no acá.
+### D-006 — `pictograma_origen: APK` no está contemplado
 
-### D-007 — El campo `modo` no está ligado a ningún requisito
+El modelo distingue tres orígenes: `APK`, `GLOBAL` y `PERSONAL`. Los del banco base viajan
+dentro de la aplicación y **no están en Firestore**. La propagación de FR-066 a FR-073 debe
+saltearlos, y ningún requisito lo dice.
 
-El modelo compartido lista `modo` en `usuarios/{uid}`, presumiblemente para el modo invitado.
-**Ningún requisito de la especificación lo menciona.** Las reglas de este repositorio no
-pueden decidir por su cuenta si `modo` condiciona algún acceso. Se relaciona con AMB-006,
-abierta.
+### D-007 — El modo invitado sí tiene documento en el servidor
 
-### D-008 — El agregado diario debe quedar fuera del alcance autorizado
+El modelo define `modo: INVITADO | REGISTRADO` dentro de `usuarios/{id}`, o sea que una
+persona en modo invitado **sí tiene perfil en Firestore**. La especificación asumía lo
+contrario al declarar el modo invitado como comportamiento puramente local. Ningún requisito
+liga `modo` a ninguna regla, y hace falta decidir si condiciona algún acceso.
 
-No es una divergencia sino una restricción que este repositorio impone: `resumenes/{fecha}`
-está bajo `usuarios/{uid}` como todo lo demás, pero FR-103 lo deniega a las cuentas
-autorizadas mientras FR-003 les concede acceso a las otras subcolecciones. **La regla debe
-tratar `resumenes` distinto que `rutinas`, `dispositivos` y `pictogramas`**, y esa asimetría
-tiene que estar explícita en las pruebas para que no se pierda en un refactor.
+### D-008 — Divergencias de nomenclatura
+
+Cuatro nombres de los contratos no coinciden con el modelo. El modelo manda.
+
+| En los contratos | En el modelo | Dónde corregir |
+|---|---|---|
+| `token` | `token_fcm` | `contracts/documentos.md` |
+| `vocabulario_version` | `version_vocabulario` | `contracts/manifiesto.md` |
+| `version_minima_app` | `min_version_app` | `contracts/manifiesto.md` |
+| `rutas{}` y `hashes{}` | `storage_path` y `hash`, singulares | `contracts/manifiesto.md` |
+
+`deleted_at` es el único campo en inglés de todo el modelo, contra la convención de nombres
+de dominio en español de la constitución. Se registra por consistencia; corregirlo es un
+cambio del modelo compartido.
+
+### D-009 — El manifiesto de publicación es una adición estructural
+
+El modelo pone `hash` y `storage_path` **dentro de `modelos/{version}`** y no contempla
+ningún artefacto de manifiesto separado. FR-035 exige uno.
+
+Es una adición defendible —permite verificar la integridad antes de reemplazar el modelo
+activo— pero es una adición, no una derivación, y `helpi-android` debe conocerla para
+consumirla.
+
+### D-010 — Falta la zona de Storage de los pictogramas globales
+
+El modelo ubica los pictogramas globales en `pictogramas/higiene/cepillar.webp`. La matriz de
+reglas de `contracts/reglas-matriz.md` solo declara `modelos/**` y `usuarios/**`, así que con
+la denegación por defecto **las imágenes globales quedan inalcanzables**.
+
+Falta también decidir la ruta de `img_perfil` y de `audio_path`, que el modelo declara como
+rutas de Storage sin fijar su prefijo.
